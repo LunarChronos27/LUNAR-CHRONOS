@@ -1,0 +1,1337 @@
+﻿import { Fragment, useMemo, useState, type ReactNode } from 'react';
+
+type MissionStatus = 'Mission concluded' | 'In development';
+
+type SourceRecord = {
+  publisher: string;
+  title: string;
+  url: string;
+};
+
+type PayloadRecord = {
+  acronym: string;
+  name: string;
+  organisation: string;
+  category: string;
+  objective: string;
+  operationalRecord: string;
+  evidenceStatus: string;
+  sources: SourceRecord[];
+};
+
+type Mission = {
+  id: string;
+  name: string;
+  missionName?: string;
+  provider: string;
+  taskOrder: string;
+  lander: string;
+  orbitalVehicle: string;
+  launchVehicle: string;
+  launchSite: string;
+  launchDate: string;
+  launchDateStatus: string;
+  landingDate: string;
+  destination: string;
+  destinationStatus: string;
+  outcome: string;
+  status: MissionStatus;
+  payloadSummary: string;
+  payloadBreakdown: string;
+  chronology: string[];
+  verification: string;
+  lastVerified: string;
+  sources: SourceRecord[];
+  payloads: PayloadRecord[];
+  hostedEquipment?: PayloadRecord[];
+};
+
+const VERIFIED_DATE = '6 November 2026';
+
+const sources = {
+  peregrineConclusion: {
+    publisher: 'NASA',
+    title: 'Peregrine Mission One concludes',
+    url: 'https://www.nasa.gov/news-release/nasa-science-astrobotic-peregrine-mission-one-concludes/',
+  },
+  peregrinePayloads: {
+    publisher: 'NASA',
+    title: 'TO2-AB science payloads',
+    url: 'https://science.nasa.gov/lunar-science/clps-deliveries/to2-astrobotic/',
+  },
+  peregrinePressKit: {
+    publisher: 'NASA',
+    title: 'Astrobotic Peregrine mission press kit',
+    url: 'https://www.nasa.gov/wp-content/uploads/2023/12/np-2023-12-017-jsc-clps-astrobotic-press-kit-update-508.pdf',
+  },
+  astroboticReport: {
+    publisher: 'Astrobotic',
+    title: 'Peregrine Mission One post-mission report',
+    url: 'https://www.astrobotic.com/wp-content/uploads/2024/08/PM1_Post-Mission-Report_2024-1.pdf',
+  },
+  im1Payloads: {
+    publisher: 'NASA',
+    title: 'Six NASA instruments on Intuitive Machines IM-1',
+    url: 'https://www.nasa.gov/missions/artemis/clps/six-nasa-instruments-will-fly-to-moon-on-intuitive-machines-lander/',
+  },
+  im1Pds: {
+    publisher: 'NASA Planetary Data System',
+    title: 'CLPS Task Order 2IM investigation',
+    url: 'https://pds.nasa.gov/services/search/search?fq=facet_investigation%3A%221%2Cclps+task+order+2im%22&q=',
+  },
+  im1PressKit: {
+    publisher: 'NASA',
+    title: 'IM-1 mission press kit',
+    url: 'https://www.nasa.gov/wp-content/uploads/2024/01/np-2023-12-016-jsc-clps-im-press-kit-web-508.pdf',
+  },
+  im1Launch: {
+    publisher: 'NASA',
+    title: 'IM-1 launch from Launch Complex 39A',
+    url: 'https://www.nasa.gov/blogs/missions/2024/02/13/carrying-nasa-science-intuitive-machines-spacex-move-moon-mission/',
+  },
+  blueGhostNasa: {
+    publisher: 'NASA',
+    title: 'TO19D science payloads',
+    url: 'https://science.nasa.gov/lunar-science/clps-deliveries/to19d-firefly/',
+  },
+  blueGhostFirefly: {
+    publisher: 'Firefly Aerospace',
+    title: 'Blue Ghost Mission 1',
+    url: 'https://fireflyspace.com/missions/blue-ghost-mission-1/',
+  },
+  blueGhostConclusion: {
+    publisher: 'NASA',
+    title: 'Blue Ghost Mission 1 concludes',
+    url: 'https://www.nasa.gov/news-release/nasa-science-continues-after-fireflys-first-moon-mission-concludes/',
+  },
+  im2Nasa: {
+    publisher: 'NASA',
+    title: 'NASA receives data before IM-2 mission ends',
+    url: 'https://www.nasa.gov/news-release/nasa-receives-some-data-before-intuitive-machines-ends-lunar-mission/',
+  },
+  im2Pds: {
+    publisher: 'NASA Planetary Data System',
+    title: 'Athena lunar lander instrument-host record',
+    url: 'https://pds.nasa.gov/ds-view/pds/viewContext.jsp?identifier=urn%3Anasa%3Apds%3Acontext%3Ainstrument_host%3Aspacecraft.clps_to_prime1_athena&version=1.0',
+  },
+  im2Prime: {
+    publisher: 'NASA',
+    title: 'Polar Resources Ice Mining Experiment 1',
+    url: 'https://www.nasa.gov/mission/polar-resources-ice-mining-experiment-1-prime-1/',
+  },
+  im2Provider: {
+    publisher: 'Intuitive Machines',
+    title: 'IM-2 landing and payload operations',
+    url: 'https://investors.intuitivemachines.com/news-releases/news-release-details/intuitive-machines-executes-southernmost-lunar-landing-and',
+  },
+  blueGhost2Firefly: {
+    publisher: 'Firefly Aerospace',
+    title: 'Blue Ghost Mission 2 — Riders 2 the Dark',
+    url: 'https://fireflyspace.com/missions/blue-ghost-mission-2/',
+  },
+  lunarPathfinderEsa: {
+    publisher: 'European Space Agency',
+    title: 'Lunar Pathfinder: Europe’s first step towards a connected Moon',
+    url: 'https://www.esa.int/Science_Exploration/Human_and_Robotic_Exploration/Lunar_Pathfinder_Europe_s_first_step_towards_a_connected_Moon',
+  },
+  lunarPathfinderEsaEquipment: {
+    publisher: 'European Space Agency',
+    title: 'Lunar Pathfinder — hosted navigation and ranging equipment',
+    url: 'https://www.esa.int/ESA_Multimedia/Images/2026/10/Lunar_Pathfinder2',
+  },
+  nasaMoonBase: {
+    publisher: 'NASA',
+    title: 'Moon Base mission architecture and development updates',
+    url: 'https://www.nasa.gov/moonbase-phases/',
+  },
+  im3Provider: {
+    publisher: 'Intuitive Machines',
+    title: 'IM-3 lunar mission',
+    url: 'https://www.intuitivemachines.com/im-3-lunar-mission',
+  },
+  nasaLaunchSchedule: {
+    publisher: 'NASA',
+    title: 'NASA launch schedule — IM-3 listed for early 2027',
+    url: 'https://www.nasa.gov/event-type/launch-schedule/',
+  },
+  im3NavCube: {
+    publisher: 'NASA',
+    title: 'NASA delivers NavCube3-mini for commercial lunar relay',
+    url: 'https://www.nasa.gov/technology/space-comms/nasa-delivers-navigation-system-for-commercial-lunar-relay/',
+  },
+};
+
+const peregrinePayloadSources = [
+  sources.peregrinePayloads,
+  sources.peregrineConclusion,
+];
+
+const im1PayloadSources = [
+  sources.im1Payloads,
+  sources.im1Pds,
+];
+
+const blueGhostPayloadSources = [
+  sources.blueGhostNasa,
+  sources.blueGhostFirefly,
+];
+
+const im2PayloadSources = [
+  sources.im2Pds,
+  sources.im2Prime,
+  sources.im2Nasa,
+];
+
+function makePayload(
+  acronym: string,
+  name: string,
+  organisation: string,
+  category: string,
+  objective: string,
+  operationalRecord: string,
+  evidenceStatus: string,
+  payloadSources: SourceRecord[],
+): PayloadRecord {
+  return {
+    acronym,
+    name,
+    organisation,
+    category,
+    objective,
+    operationalRecord,
+    evidenceStatus,
+    sources: payloadSources,
+  };
+}
+
+const peregrinePayloads: PayloadRecord[] = [
+  makePayload(
+    'LETS',
+    'Linear Energy Transfer Spectrometer',
+    'NASA Johnson Space Center',
+    'NASA science payload',
+    'Measure radiation and characterize the space radiation environment using a linear energy transfer spectrometer.',
+    'NASA reported that the instrument powered on and collected data during spacecraft flight.',
+    'In-flight operation confirmed. No lunar surface measurements were obtained.',
+    peregrinePayloadSources,
+  ),
+  makePayload(
+    'NIRVSS',
+    'Near-Infrared Volatile Spectrometer System',
+    'NASA Ames Research Center',
+    'NASA science payload',
+    'Characterize lunar surface composition and investigate volatile-bearing materials using near-infrared measurements.',
+    'NASA reported that the instrument powered on and collected data during flight.',
+    'In-flight operation confirmed. Planned lunar surface investigation was not performed.',
+    peregrinePayloadSources,
+  ),
+  makePayload(
+    'NSS',
+    'Neutron Spectrometer System',
+    'NASA Ames Research Center',
+    'NASA science payload',
+    'Measure neutron populations to investigate hydrogen abundance and the lunar radiation environment.',
+    'NASA reported that the instrument powered on and collected data during flight.',
+    'In-flight operation confirmed. No lunar surface measurements were obtained.',
+    peregrinePayloadSources,
+  ),
+  makePayload(
+    'PITMS',
+    'Peregrine Ion-Trap Mass Spectrometer',
+    'NASA Goddard Space Flight Center / ESA',
+    'NASA science payload',
+    'Characterize the composition of the lunar exosphere and investigate volatile species.',
+    'NASA reported that the instrument powered on and collected data during flight.',
+    'In-flight operation confirmed. Lunar surface operations were not possible.',
+    peregrinePayloadSources,
+  ),
+  makePayload(
+    'LRA',
+    'Laser Retroreflector Array',
+    'NASA Goddard Space Flight Center',
+    'NASA science payload',
+    'Provide a passive optical target for laser ranging from spacecraft or Earth-based observatories.',
+    'The instrument is passive and requires suitable lunar surface deployment and laser-ranging geometry.',
+    'Payload carried. No lunar surface ranging demonstration was achieved on Peregrine.',
+    peregrinePayloadSources,
+  ),
+];
+
+const im1Payloads: PayloadRecord[] = [
+  makePayload(
+    'SCALPSS',
+    'Stereo Cameras for Lunar Plume-Surface Studies',
+    'NASA Langley Research Center',
+    'NASA science payload',
+    'Record the interaction between the lander engine plume and the lunar surface during descent.',
+    'Designed to collect descent imagery of plume-surface interactions.',
+    'Payload identification confirmed. Detailed dataset interpretation is separate from the landing record.',
+    im1PayloadSources,
+  ),
+  makePayload(
+    'ROLSES',
+    'Radio Observations at the Lunar Surface PhotoElectron Sheath',
+    'NASA Goddard Space Flight Center',
+    'NASA science payload',
+    'Measure radio emissions and investigate the lunar surface photoelectron environment.',
+    'NASA identifies ROLSES as one of the six NASA payloads carried by IM-1.',
+    'Payload identification confirmed. Instrument-specific scientific findings require the relevant data publications.',
+    im1PayloadSources,
+  ),
+  makePayload(
+    'LRA',
+    'Laser Retroreflector Array',
+    'NASA Goddard Space Flight Center',
+    'NASA science payload',
+    'Provide a permanent optical reference point for precision laser ranging.',
+    'The passive array was delivered to the lunar surface.',
+    'Payload delivery confirmed. Long-term ranging performance is a separate operational question.',
+    im1PayloadSources,
+  ),
+  makePayload(
+    'NDL',
+    'Navigation Doppler Lidar',
+    'NASA Langley Research Center',
+    'NASA technology demonstration',
+    'Measure altitude and velocity during descent using laser-based Doppler lidar.',
+    'NASA identifies NDL as one of the six NASA payloads on IM-1.',
+    'Payload identification confirmed. Do not infer successful completion of every demonstration objective from the landing alone.',
+    im1PayloadSources,
+  ),
+  makePayload(
+    'LN-1',
+    'Lunar Node-1 Navigation Demonstrator',
+    'NASA Marshall Space Flight Center',
+    'NASA technology demonstration',
+    'Demonstrate a communications and navigation node concept for future lunar operations.',
+    'NASA identifies LN-1 as one of the six NASA payloads on IM-1.',
+    'Payload identification confirmed. Detailed performance assessment requires the mission results.',
+    im1PayloadSources,
+  ),
+  makePayload(
+    'RFMG',
+    'Radio Frequency Mass Gauge',
+    'NASA Glenn Research Center',
+    'NASA technology demonstration',
+    'Demonstrate radio-frequency measurement of propellant mass in a low-gravity environment.',
+    'NASA identifies RFMG as one of the six NASA payloads on IM-1.',
+    'Payload identification confirmed. Instrument-level results should be assessed separately.',
+    im1PayloadSources,
+  ),
+];
+
+const blueGhost1Payloads: PayloadRecord[] = [
+  makePayload(
+    'NGLR',
+    'Next Generation Lunar Retroreflector',
+    'University of Maryland',
+    'NASA science payload',
+    'Support lunar laser ranging, precision distance measurements and lunar geodesy.',
+    'NASA reported successful laser returns from lunar laser-ranging observatories.',
+    'Laser-return demonstration reported by NASA. Long-term scientific analysis remains separate.',
+    blueGhostPayloadSources,
+  ),
+  makePayload(
+    'RadPC',
+    'Radiation Tolerant Computer',
+    'Montana State University',
+    'NASA technology demonstration',
+    'Demonstrate computer fault detection and recovery techniques for radiation environments.',
+    'Included in the Blue Ghost payload suite. Detailed instrument-level performance figures are not reproduced here.',
+    'Payload identification confirmed. Detailed performance requires instrument-team reporting.',
+    blueGhostPayloadSources,
+  ),
+  makePayload(
+    'RAC',
+    'Regolith Adherence Characterization',
+    'Aegis Aerospace',
+    'NASA technology demonstration',
+    'Investigate how lunar dust adheres to different materials exposed to the lunar surface.',
+    'Designed to collect observations about regolith adherence.',
+    'Payload identification confirmed. Quantitative comparisons require the experiment report.',
+    blueGhostPayloadSources,
+  ),
+  makePayload(
+    'LMS',
+    'Lunar Magnetotelluric Sounder',
+    'Southwest Research Institute',
+    'NASA science payload',
+    'Measure electromagnetic fields to investigate lunar subsurface electrical properties.',
+    'Designed for electromagnetic measurements on the lunar surface.',
+    'Payload identification confirmed. Final scientific interpretation requires instrument-team publications.',
+    blueGhostPayloadSources,
+  ),
+  makePayload(
+    'LEXI',
+    'Lunar Environment heliospheric X-ray Imager',
+    'Boston University and partner institutions',
+    'NASA science payload',
+    'Image X-rays associated with the interaction between the solar wind and Earth’s magnetosphere.',
+    'NASA reported that LEXI captured X-ray images.',
+    'Image acquisition reported by NASA. Scientific interpretation remains separate.',
+    blueGhostPayloadSources,
+  ),
+  makePayload(
+    'LPV',
+    'Lunar PlanetVac',
+    'NASA Goddard Space Flight Center / Honeybee Robotics',
+    'NASA technology demonstration',
+    'Demonstrate pneumatic collection and transfer of lunar regolith.',
+    'Included as a lunar sample-acquisition technology demonstration.',
+    'Payload identification confirmed. Detailed sample results require technical reporting.',
+    blueGhostPayloadSources,
+  ),
+  makePayload(
+    'LISTER',
+    'Lunar Instrumentation for Subsurface Thermal Exploration with Rapidity',
+    'Texas Tech University',
+    'NASA science payload',
+    'Investigate subsurface thermal conditions and heat transfer in lunar material.',
+    'Designed to conduct subsurface thermal exploration.',
+    'Payload identification confirmed. Quantitative thermal results require instrument-team reporting.',
+    blueGhostPayloadSources,
+  ),
+  makePayload(
+    'SCALPSS',
+    'Stereo Cameras for Lunar Plume-Surface Studies',
+    'NASA Langley Research Center',
+    'NASA science payload',
+    'Capture stereo imagery of the interaction between a lander engine plume and the lunar surface.',
+    'Designed to acquire descent imagery of plume-surface interaction.',
+    'Payload identification confirmed. Detailed image analysis requires the NASA instrument report.',
+    blueGhostPayloadSources,
+  ),
+  makePayload(
+    'EDS',
+    'Electrodynamic Dust Shield',
+    'NASA technology demonstration team',
+    'NASA technology demonstration',
+    'Test an electric-field-based method for moving lunar dust away from exposed surfaces.',
+    'Included as a dust-mitigation technology demonstration.',
+    'Payload identification confirmed. Detailed performance measurements require the technical report.',
+    blueGhostPayloadSources,
+  ),
+  makePayload(
+    'LuGRE',
+    'Lunar GNSS Receiver Experiment',
+    'Italian Space Agency and NASA Goddard Space Flight Center',
+    'NASA technology demonstration',
+    'Test reception and tracking of GPS and Galileo signals during lunar transit and on the lunar surface.',
+    'NASA reported acquisition and tracking of GNSS signals during the journey to the Moon and on the lunar surface.',
+    'Successful GNSS signal acquisition and tracking reported by NASA. Future operational navigation applications remain prospective.',
+    blueGhostPayloadSources,
+  ),
+];
+
+const im2Payloads: PayloadRecord[] = [
+  makePayload(
+    'TRIDENT',
+    'The Regolith Ice Drill for Exploring New Terrain',
+    'NASA / Honeybee Robotics',
+    'NASA PRIME-1 instrument',
+    'Demonstrate drilling into lunar regolith to investigate subsurface material.',
+    'The lander’s final roughly horizontal orientation prevented the drill from reaching the lunar surface and completing its intended science objectives.',
+    'Payload delivered. NASA PDS records that the drill could not complete its science objectives.',
+    im2PayloadSources,
+  ),
+  makePayload(
+    'MSOLO',
+    'Mass Spectrometer Observing Lunar Operations',
+    'NASA / INFICON',
+    'NASA PRIME-1 instrument',
+    'Identify and quantify volatile compounds associated with lunar operations and subsurface material.',
+    'NASA and Intuitive Machines reported PRIME-1 operations and data collection before the mission ended.',
+    'Data received by NASA. Do not equate data acquisition with completion of every planned objective.',
+    im2PayloadSources,
+  ),
+  makePayload(
+    'LRA',
+    'Laser Retroreflector Array',
+    'NASA Goddard Space Flight Center',
+    'NASA science payload',
+    'Provide a passive fiducial marker for precision laser ranging.',
+    'Delivered with Athena. The array is passive and does not require electrical power.',
+    'Payload delivery confirmed. Long-term ranging performance is a separate matter.',
+    im2PayloadSources,
+  ),
+  makePayload(
+    'Micro Nova',
+    'Grace Hopper lunar hopper',
+    'Intuitive Machines',
+    'Technology demonstration',
+    'Demonstrate a small autonomous hopping vehicle for lunar surface exploration.',
+    'The mission ended before the planned hopper demonstration could be completed.',
+    'Technology demonstration carried. Do not report a completed lunar hopping demonstration.',
+    [sources.im2Nasa, sources.im2Provider],
+  ),
+  makePayload(
+    'Nokia LSCS',
+    'Lunar Surface Communications System',
+    'Nokia Bell Labs',
+    'Technology demonstration',
+    'Demonstrate cellular communications technology for future lunar surface operations.',
+    'The system was carried as a technology demonstration. The curtailed mission limited planned surface operations.',
+    'Payload identification confirmed. A complete demonstration outcome is not asserted here.',
+    [sources.im2Nasa, sources.im2Provider],
+  ),
+];
+
+const blueGhost2Payloads: PayloadRecord[] = [
+  makePayload(
+    'LuSEE-Night',
+    'Lunar Surface Electromagnetics Experiment at Night',
+    'NASA and U.S. Department of Energy',
+    'NASA CLPS payload — Blue Ghost surface',
+    'Measure low-frequency radio emissions and investigate the redshifted 21-centimetre signal associated with the early universe.',
+    'Planned to remain integrated on Blue Ghost’s top deck and operate after the lander powers down.',
+    'Future payload. No flight or operational result exists yet.',
+    [sources.blueGhost2Firefly],
+  ),
+  makePayload(
+    'User Terminal',
+    'Lunar Pathfinder User Terminal',
+    'NASA Jet Propulsion Laboratory',
+    'NASA CLPS payload — Blue Ghost surface communications',
+    'Demonstrate communications with the Lunar Pathfinder satellite using the planned lunar relay architecture.',
+    'Planned to be carried on Blue Ghost and communicate through Lunar Pathfinder.',
+    'Future payload. Operational performance is not yet established.',
+    [sources.blueGhost2Firefly],
+  ),
+  makePayload(
+    'Lunar Pathfinder',
+    'Lunar communications relay satellite',
+    'European Space Agency / Surrey Satellite Technology Ltd.',
+    'Orbital satellite — deployed by Elytra Dark',
+    'Provide communications relay services between lunar surface or orbital assets and Earth.',
+    'Planned for deployment into lunar orbit by Elytra Dark. It is not a Blue Ghost surface instrument.',
+    'Future orbital deployment. It must not be classified as a lunar surface instrument.',
+    [sources.blueGhost2Firefly, sources.lunarPathfinderEsa],
+  ),
+  makePayload(
+    'SPIDER',
+    'Seismic Payload for Interplanetary Discovery, Exploration, and Research',
+    'Fleet Space Technologies',
+    'Commercial payload — Blue Ghost surface',
+    'Collect seismic data to investigate lunar subsurface structure and geological properties.',
+    'Planned to be deployed on the lunar surface and connected to Blue Ghost for power and communications.',
+    'Future payload. No operational result exists yet.',
+    [sources.blueGhost2Firefly],
+  ),
+  makePayload(
+    'Rashid Rover 2',
+    'Lunar surface mobility rover',
+    'United Arab Emirates — Mohammed Bin Rashid Space Centre',
+    'International payload — Blue Ghost surface rover',
+    'Demonstrate lunar surface mobility and investigate the lunar environment, including dust, geology and thermal conditions.',
+    'Planned to operate on the lunar far side.',
+    'Future rover deployment. No operational result exists yet.',
+    [sources.blueGhost2Firefly],
+  ),
+  makePayload(
+    'LightPort',
+    'Wireless Power Receiver',
+    'Volta Space Technologies',
+    'Commercial payload — Blue Ghost surface',
+    'Demonstrate a receiver for a proposed wireless lunar power network.',
+    'Planned as a technology demonstration integrated on Blue Ghost’s top deck.',
+    'Future payload. No operational result exists yet.',
+    [sources.blueGhost2Firefly],
+  ),
+];
+
+const blueGhost2HostedEquipment: PayloadRecord[] = [
+  makePayload(
+    'RADMON',
+    'Radiation Monitor',
+    'Thales Alenia Space, Switzerland',
+    'Hosted orbital equipment — radiation monitoring',
+    'Characterise radiation conditions in the lunar orbital environment.',
+    'Planned hosted instrument aboard the Lunar Pathfinder satellite.',
+    'Future equipment. No flight or operational result exists yet.',
+    [sources.lunarPathfinderEsa, sources.lunarPathfinderEsaEquipment],
+  ),
+  makePayload(
+    'GNSS Receiver',
+    'Global Navigation Satellite System Receiver',
+    'SpacePNT, Switzerland, under ESA navigation contract',
+    'Hosted orbital equipment — navigation demonstration',
+    'Test the reception and use of Earth navigation satellite system signals from lunar orbit.',
+    'Planned hosted equipment aboard Lunar Pathfinder.',
+    'Future technology demonstration. No operational result exists yet.',
+    [sources.lunarPathfinderEsa, sources.lunarPathfinderEsaEquipment],
+  ),
+  makePayload(
+    'NASA Laser Retroreflector',
+    'Laser Retroreflector',
+    'NASA',
+    'Hosted orbital equipment — laser ranging',
+    'Support laser-ranging measurements between Earth and the Lunar Pathfinder spacecraft.',
+    'Planned passive optical equipment hosted aboard Lunar Pathfinder.',
+    'Future equipment. No ranging result exists yet.',
+    [sources.lunarPathfinderEsa, sources.lunarPathfinderEsaEquipment],
+  ),
+  makePayload(
+    'X-band Transponder',
+    'X-band Radio-Ranging Transponder',
+    'Thales Alenia Space, Spain',
+    'Hosted orbital equipment — radio ranging',
+    'Investigate two-way radio-ranging measurements between Lunar Pathfinder and ground stations, including ESA ESOC.',
+    'Planned hosted equipment aboard Lunar Pathfinder.',
+    'Future technology demonstration. No operational result exists yet.',
+    [sources.lunarPathfinderEsa, sources.lunarPathfinderEsaEquipment],
+  ),
+];
+
+const im3Payloads: PayloadRecord[] = [
+  makePayload(
+    'Lunar Vertex',
+    'Lunar Vertex investigation',
+    'Johns Hopkins Applied Physics Laboratory and NASA partners',
+    'NASA-sponsored surface science investigation',
+    'Investigate the Reiner Gamma lunar swirl and its associated magnetic anomaly.',
+    'Identified by NASA as a planned NASA-sponsored investigation for the IM-3 mission.',
+    'Future investigation. No flight or scientific result exists yet.',
+    [sources.nasaMoonBase, sources.im3Provider],
+  ),
+  makePayload(
+    'LDES',
+    'Lunar Dust Level Sensor and Effects on Surfaces',
+    'NASA Johnson Space Center',
+    'NASA surface payload',
+    'Measure lunar dust accumulation on spacecraft and surface systems.',
+    'Identified by NASA as a planned Trinity surface payload.',
+    'Future payload. No operational result exists yet.',
+    [sources.nasaMoonBase],
+  ),
+  makePayload(
+    'NavCube3-mini',
+    'GNSS navigation technology demonstration',
+    'NASA Goddard Space Flight Center',
+    'Orbital payload — Altus-1',
+    'Test whether GPS and Galileo signals can support spacecraft positioning near the Moon.',
+    'NASA reports that NavCube3-mini was delivered to Intuitive Machines for integration into Altus-1.',
+    'Future orbital technology demonstration. It is not a Trinity surface payload.',
+    [sources.im3NavCube, sources.nasaMoonBase],
+  ),
+];
+
+const missions: Mission[] = [
+  {
+    id: 'peregrine-1',
+    name: 'Peregrine Mission One',
+    provider: 'Astrobotic',
+    taskOrder: 'TO2-AB',
+    lander: 'Peregrine',
+    orbitalVehicle: 'None',
+    launchVehicle: 'ULA Vulcan VC2S',
+    launchSite: 'Space Launch Complex 41, Cape Canaveral Space Force Station, Florida, USA',
+    launchDate: '8 January 2024',
+    launchDateStatus: 'Actual launch date',
+    landingDate: 'No lunar landing',
+    destination: 'Sinus Viscositatis',
+    destinationStatus: 'Intended landing region; touchdown not achieved',
+    outcome: 'A propulsion-system anomaly prevented the planned lunar landing. Peregrine returned toward Earth and made a controlled atmospheric re-entry over the South Pacific on 18 January 2024.',
+    status: 'Mission concluded',
+    payloadSummary: 'Five NASA payloads, plus commercial and international payloads',
+    payloadBreakdown: 'The five NASA payloads are individually listed below. The wider commercial and international manifest is not treated as equivalent to the NASA payload count.',
+    chronology: [
+      '8 January 2024 — Launch aboard ULA Vulcan VC2S.',
+      'After launch — Propulsion anomaly affected the spacecraft.',
+      '18 January 2024 — Controlled atmospheric re-entry over the South Pacific.',
+      'Mission conclusion — No lunar touchdown.',
+    ],
+    verification: 'NASA confirmed the propulsion issue, controlled re-entry and in-flight operation of four of the five NASA instruments. LRA was passive and required lunar surface deployment. The mission must not be recorded as a lunar landing.',
+    lastVerified: VERIFIED_DATE,
+    sources: [
+      sources.peregrineConclusion,
+      sources.peregrinePayloads,
+      sources.peregrinePressKit,
+      sources.astroboticReport,
+    ],
+    payloads: peregrinePayloads,
+  },
+  {
+    id: 'im-1',
+    name: 'IM-1 (Odysseus)',
+    provider: 'Intuitive Machines',
+    taskOrder: 'TO2-IM-1',
+    lander: 'Nova-C — Odysseus',
+    orbitalVehicle: 'None',
+    launchVehicle: 'SpaceX Falcon 9',
+    launchSite: 'Launch Complex 39A, Kennedy Space Center, Florida, USA',
+    launchDate: '15 February 2024',
+    launchDateStatus: 'Actual launch date',
+    landingDate: '22 February 2024',
+    destination: 'Malapert A region, lunar south polar region',
+    destinationStatus: 'Landed approximately 25 km east of Malapert A crater',
+    outcome: 'Successful lunar touchdown. Odysseus came to rest at an angle. NASA payload operations continued for approximately seven days after landing.',
+    status: 'Mission concluded',
+    payloadSummary: 'Six NASA payloads, plus commercial cargo',
+    payloadBreakdown: 'The six NASA payloads are individually listed below. The NASA Planetary Data System identifies the landing location at approximately 80.13Â°S, 1.44Â°E.',
+    chronology: [
+      '15 February 2024 — Launch from Launch Complex 39A.',
+      '22 February 2024 — Lunar touchdown in the Malapert A region.',
+      'Following landing — Surface operations and payload activities.',
+      'Approximately seven days after landing — NASA payload operations ceased.',
+    ],
+    verification: 'NASA and the Planetary Data System confirm the launch, landing, location and six NASA payloads. The lander came to rest at an angle; this does not change the classification of the event as a lunar touchdown.',
+    lastVerified: VERIFIED_DATE,
+    sources: [
+      sources.im1Payloads,
+      sources.im1Pds,
+      sources.im1PressKit,
+      sources.im1Launch,
+    ],
+    payloads: im1Payloads,
+  },
+  {
+    id: 'blue-ghost-1',
+    name: 'Blue Ghost Mission 1',
+    provider: 'Firefly Aerospace',
+    taskOrder: 'TO19D',
+    lander: 'Blue Ghost',
+    orbitalVehicle: 'None',
+    launchVehicle: 'SpaceX Falcon 9',
+    launchSite: 'Launch Complex 39A, Kennedy Space Center, Florida, USA',
+    launchDate: '15 January 2025',
+    launchDateStatus: 'Actual launch date',
+    landingDate: '2 March 2025, 08:34 UTC',
+    destination: 'Near Mons Latreille, Mare Crisium',
+    destinationStatus: 'Actual lunar landing region',
+    outcome: 'Successful lunar landing and surface mission. Firefly reported approximately 346 hours of daylight operations and more than five hours of operations into lunar night. Mission operations concluded on 16 March 2025.',
+    status: 'Mission concluded',
+    payloadSummary: 'Ten NASA science and technology payloads',
+    payloadBreakdown: 'All ten NASA payloads are individually listed below. Instrument identification, operational evidence and final scientific interpretation are kept separate.',
+    chronology: [
+      '15 January 2025 — Launch aboard SpaceX Falcon 9.',
+      '2 March 2025, 08:34 UTC — Lunar landing near Mons Latreille.',
+      'March 2025 — Surface science and technology operations.',
+      '16 March 2025 — Mission operations concluded.',
+    ],
+    verification: 'NASA and Firefly confirm the launch, landing, ten NASA payloads and mission conclusion. LuGRE acquired and tracked GNSS signals at the Moon; this does not validate a separate lunar timekeeping system.',
+    lastVerified: VERIFIED_DATE,
+    sources: [
+      sources.blueGhostNasa,
+      sources.blueGhostFirefly,
+      sources.blueGhostConclusion,
+    ],
+    payloads: blueGhost1Payloads,
+  },
+  {
+    id: 'im-2',
+    name: 'IM-2 (Athena)',
+    provider: 'Intuitive Machines',
+    taskOrder: 'TO Polar Resources Ice Mining Experiment-1 (PRIME-1)',
+    lander: 'Nova-C — Athena',
+    orbitalVehicle: 'None',
+    launchVehicle: 'SpaceX Falcon 9',
+    launchSite: 'Launch Complex 39A, Kennedy Space Center, Florida, USA',
+    launchDate: '27 February 2025 UTC',
+    launchDateStatus: 'Actual launch date; 26 February in US Eastern local reporting',
+    landingDate: '6 March 2025, approximately 17:30 UTC',
+    destination: 'Mons Mouton region, lunar south polar region',
+    destinationStatus: 'Actual touchdown approximately 250 metres from intended landing site',
+    outcome: 'Athena achieved lunar touchdown inside a crater but came to rest on its side. Payload operations were curtailed by the lander attitude, illumination conditions and battery depletion. Intuitive Machines declared the mission concluded on 7 March 2025.',
+    status: 'Mission concluded',
+    payloadSummary: 'Three NASA instruments, plus technology demonstrations and commercial payloads',
+    payloadBreakdown: 'NASA PDS identifies three NASA instruments: TRIDENT, MSOLO and LRA. TRIDENT and MSOLO form the PRIME-1 instrument suite; LRA is listed separately. The Micro Nova hopper and Nokia communications system are recorded separately as technology demonstrations.',
+    chronology: [
+      '27 February 2025 UTC — Launch aboard SpaceX Falcon 9.',
+      '6 March 2025 — Lunar touchdown near Mons Mouton.',
+      '6 March 2025 — Lander confirmed to be on its side; limited payload operations.',
+      '7 March 2025 — Mission concluded at 00:15 CST.',
+    ],
+    verification: 'NASA identifies the task order as TO Polar Resources Ice Mining Experiment-1 (PRIME-1). NASA and Intuitive Machines report approximately 250 metres between touchdown and the intended landing site. NASA PDS confirms the lander orientation prevented TRIDENT from reaching the surface. The mission achieved touchdown but did not complete all planned surface objectives.',
+    lastVerified: VERIFIED_DATE,
+    sources: [
+      sources.im2Nasa,
+      sources.im2Pds,
+      sources.im2Prime,
+      sources.im2Provider,
+    ],
+    payloads: im2Payloads,
+  },
+  {
+    id: 'blue-ghost-2',
+    name: 'Blue Ghost Mission 2',
+    missionName: 'Riders 2 the Dark',
+    provider: 'Firefly Aerospace',
+    taskOrder: 'Firefly confirms two CLPS task orders; NASA identifies CS-3. The second identifier is not independently confirmed in the cited sources.',
+    lander: 'Blue Ghost',
+    orbitalVehicle: 'Elytra Dark',
+    launchVehicle: 'SpaceX Falcon 9 — planned, according to ESA (2027)',
+    launchSite: 'Not confirmed in the current Firefly mission source',
+    launchDate: 'No earlier than 2027',
+    launchDateStatus: 'Firefly mission-page target; not a confirmed launch date',
+    landingDate: 'Not yet available',
+    destination: 'Nassau Crater region, lunar far side',
+    destinationStatus: 'Planned landing region',
+    outcome: 'Future mission. Blue Ghost is planned to land on the lunar far side. Elytra Dark is a separate transfer and orbital vehicle planned to deploy Lunar Pathfinder and provide orbital relay and radio-frequency calibration services. Lunar Pathfinder is a separate ESA communications satellite planned for an elliptical lunar frozen orbit.',
+    status: 'In development',
+    payloadSummary: 'Six mission-level elements: five Blue Ghost surface payloads and Lunar Pathfinder, a separate orbital satellite',
+    payloadBreakdown: 'Six mission-level elements are identified: five Blue Ghost surface payloads and Lunar Pathfinder, a separate orbital satellite. Four additional hosted equipment records are listed in the subordinate Lunar Pathfinder register. They are not additional mission-level elements or Blue Ghost surface payloads.',
+    chronology: [
+      'Mission development — Dual-spacecraft Blue Ghost and Elytra Dark architecture.',
+      'Launch — No earlier than 2027, according to Firefly’s mission page.',
+      'Lunar orbit — Elytra Dark is planned to deploy Blue Ghost and Lunar Pathfinder.',
+      'Orbital deployment — Lunar Pathfinder is planned to enter an elliptical lunar frozen orbit.',
+      'Orbital operations — Firefly describes five years of planned Elytra Dark operations; ESA describes an approximately eight-year planned service lifetime for Lunar Pathfinder. These are separate spacecraft and separate service-life estimates.',
+      'Lunar surface — Blue Ghost is planned to support payload operations.',
+    ],
+    verification: 'Firefly identifies six mission-level elements: five Blue Ghost surface payloads and Lunar Pathfinder, a separate orbital satellite. ESA identifies four hosted orbital equipment items aboard Lunar Pathfinder: RADMON, a GNSS receiver, a NASA laser retroreflector and an X-band transponder. These are subordinate equipment records, not additional Blue Ghost surface payloads. Firefly gives a no-earlier-than-2027 launch target. All future operations remain plans, not achieved results.',
+    lastVerified: VERIFIED_DATE,
+    sources: [
+      sources.blueGhost2Firefly,
+      sources.lunarPathfinderEsa,
+      sources.lunarPathfinderEsaEquipment,
+      sources.nasaMoonBase,
+    ],
+    payloads: blueGhost2Payloads,
+    hostedEquipment: blueGhost2HostedEquipment,
+  },
+  {
+    id: 'im-3',
+    name: 'IM-3',
+    provider: 'Intuitive Machines',
+    taskOrder: 'CP-11 (CLPS PRISM 11)',
+    lander: 'Nova-C — Trinity',
+    orbitalVehicle: 'Altus-1 lunar data-relay satellite',
+    launchVehicle: 'Not confirmed in the current cited mission sources',
+    launchSite: 'Not confirmed in the current cited mission sources',
+    launchDate: 'Early 2027',
+    launchDateStatus: 'NASA launch schedule target; not a confirmed launch date',
+    landingDate: 'Not yet available',
+    destination: 'Reiner Gamma, lunar near side',
+    destinationStatus: 'Planned landing region',
+    outcome: 'Future mission. Trinity is planned to deliver surface investigations to Reiner Gamma. Altus-1 is a separate orbital spacecraft intended to support lunar communications and data-relay services.',
+    status: 'In development',
+    payloadSummary: '12 planned surface payloads: five NASA, six commercial and one civil; three additional payloads aboard Altus-1',
+    payloadBreakdown: 'NASA reports aggregate payload totals for the surface mission and Altus-1. This registry lists only payloads individually identified in the current NASA material: Lunar Vertex and LDES for the surface mission, and NavCube3-mini for Altus-1. Altus-1 itself is a spacecraft, not a payload. The remaining payload names are not invented or represented as individually verified records.',
+    chronology: [
+      'Mission preparation — Trinity lander and Altus-1 orbital architecture.',
+      'Launch — Early 2027 in NASA’s current launch schedule; no confirmed launch date.',
+      'Lunar landing — Planned at Reiner Gamma; date not yet available.',
+      'Orbital operations — Altus-1 is planned to support lunar communications and data-relay services.',
+    ],
+    verification: 'NASA identifies CP-11, Trinity, Reiner Gamma, Lunar Vertex, LDES and Altus-1. NASA reports five NASA, six commercial and one civil surface payload, plus three payloads aboard Altus-1. NavCube3-mini is individually identified as an Altus-1 payload. The complete payload manifest is not reproduced because the current cited NASA material does not individually identify every payload. NASA’s current launch schedule lists the mission for early 2027; no precise launch date is asserted.',
+    lastVerified: VERIFIED_DATE,
+    sources: [
+      sources.nasaMoonBase,
+      sources.nasaLaunchSchedule,
+      sources.im3Provider,
+      sources.im3NavCube,
+    ],
+    payloads: im3Payloads,
+  },
+];
+
+const statusOptions = [
+  'All',
+  'Mission concluded',
+  'In development',
+];
+
+function NumberedHeading({
+  number,
+  children,
+}: {
+  number: string;
+  children: ReactNode;
+}) {
+  return (
+    <h4 className="clps-numbered-heading">
+      <span className="clps-heading-number">{number}</span>
+      <span className="clps-heading-title">{children}</span>
+    </h4>
+  );
+}
+
+function CLPSBrowser() {
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [expandedMission, setExpandedMission] = useState<string | null>(null);
+
+  const filteredMissions = useMemo(() => {
+    const query = search.toLowerCase().trim();
+
+    return missions.filter((mission) => {
+      const payloadSearchText = [
+        ...mission.payloads,
+        ...(mission.hostedEquipment ?? []),
+      ]
+        .map((payload) =>
+          [
+            payload.acronym,
+            payload.name,
+            payload.organisation,
+            payload.category,
+            payload.objective,
+          ].join(' '),
+        )
+        .join(' ');
+
+      const searchableText = [
+        mission.name,
+        mission.missionName ? '',
+        mission.provider,
+        mission.taskOrder,
+        mission.lander,
+        mission.orbitalVehicle,
+        mission.destination,
+        mission.payloadSummary,
+        mission.payloadBreakdown,
+        mission.launchVehicle,
+        mission.launchSite,
+        mission.outcome,
+        payloadSearchText,
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      const matchesSearch = searchableText.includes(query);
+      const matchesStatus =
+        statusFilter === 'All' || mission.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [search, statusFilter]);
+
+  const statusClass = (status: MissionStatus) =>
+    `clps-status status-${status.toLowerCase().replaceAll(' ', '-')}`;
+
+  const toggleDetails = (missionId: string) => {
+    setExpandedMission((current) =>
+      current === missionId ? null : missionId,
+    );
+  };
+
+  return (
+    <section className="clps-section">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">
+            LUNAR CHRONOS / COMMERCIAL LUNAR PAYLOAD SERVICES
+          </p>
+          <h2>CLPS Mission Registry</h2>
+          <p className="section-description">
+            Independently maintained mission records, spacecraft,
+            launch and landing events, destinations, payloads and
+            operational outcomes.
+          </p>
+        </div>
+      </div>
+
+      <div className="clps-controls">
+        <input
+          type="search"
+          placeholder="Search missions, providers, destinations or payloads..."
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          aria-label="Search CLPS missions"
+        />
+
+        <select
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+          aria-label="Filter missions by status"
+        >
+          {statusOptions.map((status) => (
+            <option key={status} value={status}>
+              {status === 'All' ? 'All statuses' : status}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="clps-table-heading">
+        <span className="eyebrow">MISSION RECORDS</span>
+        <span className="clps-count">
+          {filteredMissions.length} / {missions.length} records
+        </span>
+      </div>
+
+      <div className="clps-table-wrap">
+        <table className="clps-table">
+          <thead>
+            <tr>
+              <th>Mission</th>
+              <th>Provider</th>
+              <th>Lander</th>
+              <th>Destination</th>
+              <th>Launch target / date</th>
+              <th>Status</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {filteredMissions.map((mission) => {
+              const isExpanded = expandedMission === mission.id;
+              const detailsId = `mission-details-${mission.id}`;
+
+              return (
+                <Fragment key={mission.id}>
+                  <tr>
+                    <td><strong>{mission.name}</strong></td>
+                    <td>{mission.provider}</td>
+                    <td>{mission.lander}</td>
+                    <td>{mission.destination}</td>
+                    <td>{mission.launchDate}</td>
+                    <td>
+                      <span className={statusClass(mission.status)}>
+                        {mission.status}
+                      </span>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="clps-details-button"
+                        onClick={() => toggleDetails(mission.id)}
+                        aria-expanded={isExpanded}
+                        aria-controls={detailsId}
+                      >
+                        {isExpanded ? 'CLOSE âˆ’' : 'VIEW +'}
+                      </button>
+                    </td>
+                  </tr>
+
+                  {isExpanded && (
+                    <tr className="clps-expanded-row">
+                      <td colSpan={7}>
+                        <div
+                          className="clps-expanded-content"
+                          id={detailsId}
+                        >
+                          <div className="clps-expanded-heading">
+                            <div>
+                              <span className="eyebrow">MISSION RECORD</span>
+                              <h3>{mission.name}</h3>
+                              {mission.missionName && (
+                                <p className="section-description">
+                                  Mission name: {mission.missionName}
+                                </p>
+                              )}
+                            </div>
+                            <span className={statusClass(mission.status)}>
+                              {mission.status}
+                            </span>
+                          </div>
+
+                          <NumberedHeading number="01">
+                            Mission identification
+                          </NumberedHeading>
+
+                          <div className="clps-detail-grid">
+                            <div>
+                              <span>PROVIDER</span>
+                              <strong>{mission.provider}</strong>
+                            </div>
+                            {mission.missionName && (
+                              <div>
+                                <span>MISSION NAME</span>
+                                <strong>{mission.missionName}</strong>
+                              </div>
+                            )}
+                            <div>
+                              <span>CLPS TASK ORDER</span>
+                              <strong>{mission.taskOrder}</strong>
+                            </div>
+                            <div>
+                              <span>LANDER</span>
+                              <strong>{mission.lander}</strong>
+                            </div>
+                            <div>
+                              <span>ORBITAL VEHICLE</span>
+                              <strong>{mission.orbitalVehicle}</strong>
+                            </div>
+                            <div>
+                              <span>DESTINATION</span>
+                              <strong>{mission.destination}</strong>
+                            </div>
+                            <div>
+                              <span>DESTINATION STATUS</span>
+                              <strong>{mission.destinationStatus}</strong>
+                            </div>
+                            <div>
+                              <span>LAUNCH VEHICLE</span>
+                              <strong>{mission.launchVehicle}</strong>
+                            </div>
+                            <div>
+                              <span>LAUNCH SITE</span>
+                              <strong>{mission.launchSite}</strong>
+                            </div>
+                          </div>
+
+                          <NumberedHeading number="02">
+                            Mission chronology
+                          </NumberedHeading>
+
+                          <div className="clps-detail-grid">
+                            <div>
+                              <span>LAUNCH DATE / TARGET</span>
+                              <strong>{mission.launchDate}</strong>
+                            </div>
+                            <div>
+                              <span>DATE CLASSIFICATION</span>
+                              <strong>{mission.launchDateStatus}</strong>
+                            </div>
+                            <div>
+                              <span>LUNAR LANDING DATE</span>
+                              <strong>{mission.landingDate}</strong>
+                            </div>
+                            <div className="clps-payload-detail">
+                              <span>MISSION OUTCOME</span>
+                              <strong>{mission.outcome}</strong>
+                            </div>
+                          </div>
+
+                          <ul className="clps-chronology">
+                            {mission.chronology.map((event, index) => (
+                              <li key={`${mission.id}-event-${index}`}>
+                                {event}
+                              </li>
+                            ))}
+                          </ul>
+
+                          <NumberedHeading number="03">
+                            Payload information
+                          </NumberedHeading>
+
+                          <div className="clps-detail-grid">
+                            <div>
+                              <span>PAYLOAD SUMMARY</span>
+                              <strong>{mission.payloadSummary}</strong>
+                            </div>
+                            <div className="clps-payload-detail">
+                              <span>PAYLOAD OVERVIEW</span>
+                              <strong>{mission.payloadBreakdown}</strong>
+                            </div>
+                          </div>
+
+                          <div className="clps-payload-heading">
+                            <div>
+                              <span className="eyebrow">
+                                INSTRUMENT AND SPACECRAFT REGISTER
+                              </span>
+                              <h4>
+                                Individually identified payload records ({mission.payloads.length})
+                              </h4>
+                            </div>
+                            <span className="clps-count">
+                              {mission.payloads.length} named records
+                            </span>
+                          </div>
+
+                          <div className="clps-payload-list">
+                            {mission.payloads.map((payload, index) => (
+                              <article
+                                className="clps-payload-card"
+                                key={payload.acronym}
+                              >
+                                <div className="clps-payload-card-heading">
+                                  <span className="clps-payload-number">
+                                    {String(index + 1).padStart(2, '0')}
+                                  </span>
+
+                                  <div className="clps-payload-title">
+                                    <strong>{payload.acronym}</strong>
+                                    <h5>{payload.name}</h5>
+                                  </div>
+                                </div>
+
+                                <div className="clps-payload-fields">
+                                  <div>
+                                    <span>CATEGORY</span>
+                                    <p>{payload.category}</p>
+                                  </div>
+                                  <div>
+                                    <span>RESPONSIBLE ORGANISATION</span>
+                                    <p>{payload.organisation}</p>
+                                  </div>
+                                  <div>
+                                    <span>MISSION OBJECTIVE</span>
+                                    <p>{payload.objective}</p>
+                                  </div>
+                                  <div>
+                                    <span>OPERATIONAL RECORD</span>
+                                    <p>{payload.operationalRecord}</p>
+                                  </div>
+                                  <div>
+                                    <span>EVIDENCE STATUS</span>
+                                    <p>{payload.evidenceStatus}</p>
+                                  </div>
+                                </div>
+
+                                <div className="clps-payload-sources">
+                                  {payload.sources.map((source) => (
+                                    <a
+                                      key={`${payload.acronym}-${source.publisher}-${source.title}`}
+                                      href={source.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                    >
+                                      {source.publisher} — {source.title} â†—
+                                    </a>
+                                  ))}
+                                </div>
+                              </article>
+                            ))}
+                          </div>
+
+                          {mission.hostedEquipment &&
+                            mission.hostedEquipment.length > 0 && (
+                              <>
+                                <div className="clps-payload-heading">
+                                  <div>
+                                    <span className="eyebrow">
+                                      SEPARATE ORBITAL EQUIPMENT REGISTER
+                                    </span>
+                                    <h4>
+                                      Lunar Pathfinder — Orbital Spacecraft and Hosted Instruments ({mission.hostedEquipment.length})
+                                    </h4>
+                                  </div>
+                                  <span className="clps-count">
+                                    {mission.hostedEquipment.length} hosted records
+                                  </span>
+                                </div>
+
+                                <p className="section-description">
+                                  These records concern equipment hosted aboard
+                                  the separate Lunar Pathfinder orbital
+                                  satellite. They are not additional Blue Ghost
+                                  surface payloads and are not included in the
+                                  six mission-level elements.
+                                </p>
+
+                                <div className="clps-payload-list">
+                                  {mission.hostedEquipment.map((equipment, index) => (
+                                    <article
+                                      className="clps-payload-card"
+                                      key={equipment.acronym}
+                                    >
+                                      <div className="clps-payload-card-heading">
+                                        <span className="clps-payload-number">
+                                          {String(index + 1).padStart(2, '0')}
+                                        </span>
+
+                                        <div className="clps-payload-title">
+                                          <strong>{equipment.acronym}</strong>
+                                          <h5>{equipment.name}</h5>
+                                        </div>
+                                      </div>
+
+                                      <div className="clps-payload-fields">
+                                        <div>
+                                          <span>CATEGORY</span>
+                                          <p>{equipment.category}</p>
+                                        </div>
+                                        <div>
+                                          <span>RESPONSIBLE ORGANISATION</span>
+                                          <p>{equipment.organisation}</p>
+                                        </div>
+                                        <div>
+                                          <span>MISSION OBJECTIVE</span>
+                                          <p>{equipment.objective}</p>
+                                        </div>
+                                        <div>
+                                          <span>OPERATIONAL RECORD</span>
+                                          <p>{equipment.operationalRecord}</p>
+                                        </div>
+                                        <div>
+                                          <span>EVIDENCE STATUS</span>
+                                          <p>{equipment.evidenceStatus}</p>
+                                        </div>
+                                      </div>
+
+                                      <div className="clps-payload-sources">
+                                        {equipment.sources.map((source) => (
+                                          <a
+                                            key={`${equipment.acronym}-${source.publisher}-${source.title}`}
+                                            href={source.url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                          >
+                                            {source.publisher} — {source.title} â†—
+                                          </a>
+                                        ))}
+                                      </div>
+                                    </article>
+                                  ))}
+                                </div>
+                              </>
+                            )}
+
+                          <div className="clps-verification-note">
+                            <strong>RECORD VERIFICATION</strong>
+                            <p>{mission.verification}</p>
+                            <p>
+                              Last verified: {mission.lastVerified}.
+                              This date records the date of this registry
+                              review; it does not imply that every payload
+                              has a completed scientific performance audit.
+                            </p>
+                            <p>
+                              This is an independently maintained Lunar
+                              Chronos research dataset. It is not a live NASA
+                              feed or a NASA-operated database.
+                            </p>
+                          </div>
+
+                          <NumberedHeading number="04">
+                            Source documents
+                          </NumberedHeading>
+
+                          <div className="clps-source-list">
+                            {mission.sources.map((source) => (
+                              <a
+                                key={`${mission.id}-${source.publisher}-${source.title}`}
+                                href={source.url}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                {source.publisher} — {source.title} â†—
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+
+        {filteredMissions.length === 0 && (
+          <p className="data-note clps-empty">
+            No mission records match your search.
+          </p>
+        )}
+      </div>
+
+      <div className="clps-data-integrity">
+  <div className="clps-data-integrity-header">
+    <div><span>CLPS · DATA GOVERNANCE</span><h3>Mission data integrity</h3></div>
+    <strong>INDEPENDENT DATASET</strong>
+  </div>
+  <div className="clps-data-metrics">
+    <div><strong>06</strong><span>MISSION RECORDS</span></div>
+    <div><strong>04</strong><span>CONCLUDED</span></div>
+    <div><strong>02</strong><span>IN DEVELOPMENT</span></div>
+  </div>
+  <div className="clps-data-classification">
+    <div><span>HISTORICAL OUTCOMES</span><strong>Recorded</strong></div>
+    <div><span>FUTURE LAUNCH TARGETS</span><strong>Subject to change</strong></div>
+  </div>
+  <div className="clps-data-provenance">
+    <span>SOURCE TRACEABILITY</span>
+    <p>Each mission record provides available NASA and provider references, verification dates and documented payload evidence.</p>
+  </div>
+  <small>INDEPENDENT RESEARCH DATASET · NOT AN OFFICIAL NASA REGISTRY</small>
+</div>
+    </section>
+  );
+}
+
+export default CLPSBrowser;

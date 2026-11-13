@@ -1,0 +1,1172 @@
+import { useEffect, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
+
+type USTPosition = {
+  calendar_name: string;
+  calendar_version: string;
+  epoch_utc: string;
+  input_utc: string;
+  cycle_number: number;
+  phase_number: number;
+  phases_per_cycle: number;
+  phase_progress_percent: number;
+  phase_duration_seconds: number;
+};
+
+type TimelineLocation = {
+  id: string;
+  name: string;
+};
+
+type TimelineActivity = {
+  id: string;
+  name: string;
+  description: string;
+  start_utc: string;
+  end_utc: string | null;
+  location_id: string;
+  location_name: string;
+  start_ust: USTPosition;
+  end_ust: USTPosition | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type ActivityForm = {
+  name: string;
+  description: string;
+  startDate: string;
+  startTime: string;
+  endDate: string;
+  endTime: string;
+  locationId: string;
+};
+
+type ViewMode = 'mission' | 'cosmic' | 'combined';
+
+type Props = {
+  apiUrl: string;
+  locations: TimelineLocation[];
+};
+
+const STORAGE_KEY = 'lunar-chronos-ust-mission-timeline-v1';
+
+function readStoredActivities(): TimelineActivity[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.filter(
+      (item): item is TimelineActivity =>
+        item !== null &&
+        typeof item === 'object' &&
+        typeof item.id === 'string' &&
+        typeof item.name === 'string' &&
+        typeof item.start_utc === 'string' &&
+        item.start_ust !== undefined
+    );
+  } catch {
+    return [];
+  }
+}
+
+function initialForm(): ActivityForm {
+  return {
+    name: '',
+    description: '',
+    startDate: new Date().toISOString().slice(0, 10),
+    startTime: '12:00',
+    endDate: '',
+    endTime: '',
+    locationId: '',
+  };
+}
+
+function utcDatePart(value: string): string {
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function utcTimePart(value: string): string {
+  return new Date(value).toISOString().slice(11, 16);
+}
+
+function formatUtc(value: string): string {
+  return value
+    .replace('T', ' ')
+    .replace(/\.000Z$/, ' UTC')
+    .replace(/Z$/, ' UTC');
+}
+
+function formatAxisDate(value: number): string {
+  return new Date(value).toISOString().slice(0, 10);
+}
+
+function csvCell(value: unknown): string {
+  const text = String(value ?? '');
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function phaseIndex(position: USTPosition): number {
+  return (
+    position.cycle_number * position.phases_per_cycle +
+    position.phase_number
+  );
+}
+
+// A display coordinate derived from the UST service result.
+// This does not implement or replace the UST calendar calculation.
+function ustDisplayCoordinate(position: USTPosition): number {
+  return (
+    position.cycle_number * position.phases_per_cycle +
+    position.phase_number - 1 +
+    position.phase_progress_percent / 100
+  );
+}
+
+function polarPoint(
+  cx: number,
+  cy: number,
+  radius: number,
+  angleDegrees: number
+) {
+  const angle = (angleDegrees * Math.PI) / 180;
+
+  return {
+    x: cx + radius * Math.cos(angle),
+    y: cy + radius * Math.sin(angle),
+  };
+}
+
+function phaseSectorPath(phase: number): string {
+  const startAngle = -90 + ((phase - 1) * 360) / 13;
+  const endAngle = -90 + (phase * 360) / 13;
+  const start = polarPoint(110, 110, 78, startAngle);
+  const end = polarPoint(110, 110, 78, endAngle);
+
+  return [
+    'M 110 110',
+    `L ${start.x} ${start.y}`,
+    `A 78 78 0 0 1 ${end.x} ${end.y}`,
+    'Z',
+  ].join(' ');
+}
+
+function activityPhaseCoordinate(position: USTPosition): number {
+  return (
+    (position.phase_number - 1) +
+    position.phase_progress_percent / 100
+  );
+}
+
+export default function USTMissionTimeline({
+  apiUrl,
+  locations,
+}: Props) {
+  const [activities, setActivities] =
+    useState<TimelineActivity[]>(readStoredActivities);
+
+  const [form, setForm] = useState<ActivityForm>(initialForm);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [storageWarning, setStorageWarning] = useState('');
+  const [activeView, setActiveView] = useState<ViewMode>('mission');
+  const [calendarHost, setCalendarHost] = useState<HTMLElement | null>(null);
+  const [activityPage, setActivityPage] = useState(1);
+
+  useEffect(() => {
+    const host = document.getElementById('ust-master-calendar-host');
+    if (host) setCalendarHost(host);
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(activities));
+      setStorageWarning('');
+    } catch {
+      setStorageWarning(
+        'Browser storage could not save the latest changes. Export your CSV.'
+      );
+    }
+  }, [activities]);
+
+  const sortedActivities = [...activities].sort(
+    (a, b) => Date.parse(a.start_utc) - Date.parse(b.start_utc)
+  );
+
+  // LUNAR_CHRONOS_ACTIVITY_PAGINATION
+  const activityPageSize = 5;
+  const activityPageCount = Math.max(1, Math.ceil(sortedActivities.length / activityPageSize));
+  const safeActivityPage = Math.min(activityPage, activityPageCount);
+  const visibleActivities = sortedActivities.slice(
+    (safeActivityPage - 1) * activityPageSize,
+    safeActivityPage * activityPageSize
+  );
+  function updateForm<K extends keyof ActivityForm>(
+    field: K,
+    value: ActivityForm[K]
+  ) {
+    setForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  async function calculateUst(
+    date: string,
+    time: string
+  ): Promise<USTPosition> {
+    const dateTime = `${date}T${time}:00Z`;
+
+    const query = new URLSearchParams({
+      date_time: dateTime,
+    });
+
+    const response = await fetch(
+      `${apiUrl}/ust/calendar?${query}`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail || 'The UST calculation failed.'
+      );
+    }
+
+    if (
+      typeof data.cycle_number !== 'number' ||
+      typeof data.phase_number !== 'number' ||
+      typeof data.phases_per_cycle !== 'number' ||
+      typeof data.phase_progress_percent !== 'number'
+    ) {
+      throw new Error('The UST API returned an incomplete result.');
+    }
+
+    return data as USTPosition;
+  }
+
+  function resetForm() {
+    setForm(initialForm());
+    setEditingId(null);
+    setError('');
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError('');
+
+    const name = form.name.trim();
+
+    if (!name) {
+      setError('Enter an activity name.');
+      return;
+    }
+
+    if (!form.startDate || !form.startTime) {
+      setError('A UTC start date and time are required.');
+      return;
+    }
+
+    const startUtc = `${form.startDate}T${form.startTime}:00Z`;
+    const startMilliseconds = Date.parse(startUtc);
+
+    if (!Number.isFinite(startMilliseconds)) {
+      setError('The start date or time is invalid.');
+      return;
+    }
+
+    const hasEndDate = Boolean(form.endDate);
+    const hasEndTime = Boolean(form.endTime);
+
+    if (hasEndDate !== hasEndTime) {
+      setError('Enter both the end date and end time, or leave both empty.');
+      return;
+    }
+
+    let endUtc: string | null = null;
+
+    if (hasEndDate && hasEndTime) {
+      endUtc = `${form.endDate}T${form.endTime}:00Z`;
+      const endMilliseconds = Date.parse(endUtc);
+
+      if (!Number.isFinite(endMilliseconds)) {
+        setError('The end date or time is invalid.');
+        return;
+      }
+
+      if (endMilliseconds < startMilliseconds) {
+        setError('The end time cannot precede the start time.');
+        return;
+      }
+    }
+
+    setSaving(true);
+
+    try {
+      const startUst = await calculateUst(
+        form.startDate,
+        form.startTime
+      );
+
+      const endUst =
+        endUtc && form.endDate && form.endTime
+          ? await calculateUst(form.endDate, form.endTime)
+          : null;
+
+      const selectedLocation = locations.find(
+        (location) => location.id === form.locationId
+      );
+
+      const now = new Date().toISOString();
+      const existing = activities.find(
+        (activity) => activity.id === editingId
+      );
+
+      const record: TimelineActivity = {
+        id:
+          existing?.id ??
+          `activity-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name,
+        description: form.description.trim(),
+        start_utc: startUtc,
+        end_utc: endUtc,
+        location_id: selectedLocation?.id ?? '',
+        location_name: selectedLocation?.name ?? '',
+        start_ust: startUst,
+        end_ust: endUst,
+        created_at: existing?.created_at ?? now,
+        updated_at: now,
+      };
+
+      setActivities((current) =>
+        existing
+          ? current.map((item) =>
+              item.id === existing.id ? record : item
+            )
+          : [...current, record]
+      );
+
+      resetForm();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to calculate the UST position.'
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function editActivity(activity: TimelineActivity) {
+    setForm({
+      name: activity.name,
+      description: activity.description,
+      startDate: utcDatePart(activity.start_utc),
+      startTime: utcTimePart(activity.start_utc),
+      endDate: activity.end_utc
+        ? utcDatePart(activity.end_utc)
+        : '',
+      endTime: activity.end_utc
+        ? utcTimePart(activity.end_utc)
+        : '',
+      locationId: activity.location_id,
+    });
+
+    setEditingId(activity.id);
+    setError('');
+  }
+
+  function deleteActivity(id: string) {
+    const confirmed = window.confirm(
+      'Delete this mission timeline activity?'
+    );
+
+    if (!confirmed) return;
+
+    setActivities((current) =>
+      current.filter((item) => item.id !== id)
+    );
+
+    if (editingId === id) resetForm();
+  }
+
+  function exportCsv() {
+    const headers = [
+      'Activity',
+      'Description',
+      'Lunar location',
+      'Start UTC',
+      'End UTC',
+      'Start UST cycle',
+      'Start UST phase',
+      'Start phase progress percent',
+      'End UST cycle',
+      'End UST phase',
+      'End phase progress percent',
+      'Calendar name',
+      'Calendar version',
+      'Custom epoch UTC',
+    ];
+
+    const rows = sortedActivities.map((activity) => [
+      activity.name,
+      activity.description,
+      activity.location_name,
+      activity.start_utc,
+      activity.end_utc ?? '',
+      activity.start_ust.cycle_number,
+      activity.start_ust.phase_number,
+      activity.start_ust.phase_progress_percent,
+      activity.end_ust?.cycle_number ?? '',
+      activity.end_ust?.phase_number ?? '',
+      activity.end_ust?.phase_progress_percent ?? '',
+      activity.start_ust.calendar_name,
+      activity.start_ust.calendar_version,
+      activity.start_ust.epoch_utc,
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map(csvCell).join(','))
+      .join('\r\n');
+
+    const blob = new Blob(['\uFEFF', csv], {
+      type: 'text/csv;charset=utf-8;',
+    });
+
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+
+    anchor.href = url;
+    anchor.download = 'lunar-chronos-ust-mission-timeline.csv';
+
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+
+    URL.revokeObjectURL(url);
+  }
+
+  const timeValues = sortedActivities.flatMap((activity) => [
+    Date.parse(activity.start_utc),
+    ...(activity.end_utc ? [Date.parse(activity.end_utc)] : []),
+  ]);
+
+  let utcMinimum = timeValues.length ? Math.min(...timeValues) : Date.now();
+  let utcMaximum = timeValues.length ? Math.max(...timeValues) : utcMinimum;
+
+  if (utcMaximum === utcMinimum) {
+    utcMinimum -= 12 * 60 * 60 * 1000;
+    utcMaximum += 12 * 60 * 60 * 1000;
+  } else {
+    const padding = Math.max(
+      (utcMaximum - utcMinimum) * 0.08,
+      60 * 60 * 1000
+    );
+    utcMinimum -= padding;
+    utcMaximum += padding;
+  }
+
+  const utcPercent = (value: string) =>
+    Math.min(
+      100,
+      Math.max(
+        0,
+        ((Date.parse(value) - utcMinimum) /
+          (utcMaximum - utcMinimum)) *
+          100
+      )
+    );
+
+  const ustValues = sortedActivities.flatMap((activity) => [
+    ustDisplayCoordinate(activity.start_ust),
+    ...(activity.end_ust
+      ? [ustDisplayCoordinate(activity.end_ust)]
+      : []),
+  ]);
+
+  let ustMinimum = ustValues.length ? Math.min(...ustValues) : 0;
+  let ustMaximum = ustValues.length ? Math.max(...ustValues) : 1;
+
+  if (ustMaximum === ustMinimum) {
+    ustMinimum -= 0.5;
+    ustMaximum += 0.5;
+  } else {
+    const padding = Math.max(
+      (ustMaximum - ustMinimum) * 0.08,
+      0.25
+    );
+    ustMinimum -= padding;
+    ustMaximum += padding;
+  }
+
+  const ustPercent = (position: USTPosition) =>
+    Math.min(
+      100,
+      Math.max(
+        0,
+        ((ustDisplayCoordinate(position) - ustMinimum) /
+          (ustMaximum - ustMinimum)) *
+          100
+      )
+    );
+
+  const utcTicks = [0, 50, 100].map(
+    (percent) =>
+      utcMinimum + ((utcMaximum - utcMinimum) * percent) / 100
+  );
+
+  const occupiedPhases = new Set<number>();
+
+  sortedActivities.forEach((activity) => {
+    occupiedPhases.add(activity.start_ust.phase_number);
+
+    if (activity.end_ust) {
+      occupiedPhases.add(activity.end_ust.phase_number);
+    }
+  });
+
+  const hasActivities = sortedActivities.length > 0;
+
+  return (
+    <section className="panel ust-timeline-panel" id="ust-mission-timeline">
+      <div className="panel-heading">
+        <div>
+          <span className="module-code">MISSION OPERATIONS</span>
+          <h2>UST Mission Calendar</h2>
+          <p>
+            Visualise mission activities against UTC and the proposed
+            13-phase UST calendar.
+          </p>
+        </div>
+        <span className="engine-indicator">MANUAL ENTRY</span>
+      </div>
+
+      <p className="technical-note">
+        UTC is the authoritative timestamp. UST is an additional,
+        provisional calendar representation calculated by the existing
+        UST service. It is not an official lunar time standard.
+      </p>
+
+      <form className="ust-timeline-form" onSubmit={handleSubmit}>
+        <div className="ust-timeline-form-heading">
+          <strong>
+            {editingId ? 'EDIT ACTIVITY' : 'NEW MISSION ACTIVITY'}
+          </strong>
+          <span>UTC INPUT</span>
+        </div>
+
+        <div className="ust-timeline-field">
+          <label htmlFor="timeline-activity-name">ACTIVITY NAME</label>
+          <input
+            id="timeline-activity-name"
+            type="text"
+            value={form.name}
+            maxLength={120}
+            onChange={(event) => updateForm('name', event.target.value)}
+            placeholder="e.g. Surface operations"
+            required
+          />
+        </div>
+
+        <div className="ust-timeline-field">
+          <label htmlFor="timeline-description">
+            DESCRIPTION (OPTIONAL)
+          </label>
+          <textarea
+            id="timeline-description"
+            rows={2}
+            value={form.description}
+            maxLength={1000}
+            onChange={(event) =>
+              updateForm('description', event.target.value)
+            }
+            placeholder="Additional activity details"
+          />
+        </div>
+
+        <div className="ust-timeline-grid">
+          <div className="ust-timeline-field">
+            <label htmlFor="timeline-start-date">START DATE · UTC</label>
+            <input
+              id="timeline-start-date"
+              type="date"
+              value={form.startDate}
+              onChange={(event) =>
+                updateForm('startDate', event.target.value)
+              }
+              required
+            />
+          </div>
+
+          <div className="ust-timeline-field">
+            <label htmlFor="timeline-start-time">START TIME · UTC</label>
+            <input
+              id="timeline-start-time"
+              type="text" inputMode="numeric" placeholder="HH:MM" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" maxLength={5}
+              value={form.startTime}
+              onChange={(event) =>
+                updateForm('startTime', event.target.value)
+              }
+              required
+            />
+          </div>
+
+          <div className="ust-timeline-field">
+            <label htmlFor="timeline-end-date">
+              END DATE · UTC (OPTIONAL)
+            </label>
+            <input
+              id="timeline-end-date"
+              type="date"
+              value={form.endDate}
+              onChange={(event) =>
+                updateForm('endDate', event.target.value)
+              }
+            />
+          </div>
+
+          <div className="ust-timeline-field">
+            <label htmlFor="timeline-end-time">
+              END TIME · UTC (OPTIONAL)
+            </label>
+            <input
+              id="timeline-end-time"
+              type="text" inputMode="numeric" placeholder="HH:MM" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" maxLength={5}
+              value={form.endTime}
+              onChange={(event) =>
+                updateForm('endTime', event.target.value)
+              }
+            />
+          </div>
+        </div>
+
+        <div className="ust-timeline-field">
+          <label htmlFor="timeline-location">
+            LUNAR LOCATION (OPTIONAL)
+          </label>
+          <select
+            id="timeline-location"
+            value={form.locationId}
+            onChange={(event) =>
+              updateForm('locationId', event.target.value)
+            }
+          >
+            <option value="">No location specified</option>
+            {locations.map((location) => (
+              <option key={location.id} value={location.id}>
+                {location.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {error && (
+          <p className="ust-timeline-error" role="alert">
+            {error}
+          </p>
+        )}
+
+        <div className="ust-timeline-actions">
+          <button
+            className="ust-timeline-primary"
+            type="submit"
+            disabled={saving}
+          >
+            {saving
+              ? 'CALCULATING UST...'
+              : editingId
+                ? 'UPDATE ACTIVITY'
+                : 'ADD ACTIVITY'}
+          </button>
+
+          {editingId && (
+            <button
+              className="ust-timeline-secondary"
+              type="button"
+              onClick={resetForm}
+              disabled={saving}
+            >
+              CANCEL EDIT
+            </button>
+          )}
+        </div>
+      </form>
+
+      <div className="ust-timeline-list-heading">
+        <div>
+          <strong>MISSION ACTIVITY RECORDS</strong>
+          <span>{activities.length} recorded</span>
+        </div>
+
+        <button
+          className="ust-timeline-secondary"
+          type="button"
+          onClick={exportCsv}
+          disabled={activities.length === 0}
+        >
+          EXPORT CSV
+        </button>
+      </div>
+
+      {storageWarning && (
+        <p className="ust-timeline-error" role="alert">
+          {storageWarning}
+        </p>
+      )}
+
+      {activities.length > 0 && (
+        <div className="ust-timeline-list">
+          {visibleActivities.map((activity) => {
+            const boundaries = activity.end_ust
+              ? Math.max(
+                  0,
+                  phaseIndex(activity.end_ust) -
+                    phaseIndex(activity.start_ust)
+                )
+              : 0;
+
+            return (
+              <article className="ust-timeline-card" key={activity.id}>
+                <div className="ust-timeline-card-heading">
+                  <div>
+                    <span className="module-code">
+                      {activity.end_utc ? 'DURATION ACTIVITY' : 'MILESTONE'}
+                    </span>
+                    <h3>{activity.name}</h3>
+                  </div>
+
+                  <div className="ust-timeline-card-actions">
+                    <button
+                      type="button"
+                      onClick={() => editActivity(activity)}
+                    >
+                      EDIT
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteActivity(activity.id)}
+                    >
+                      DELETE
+                    </button>
+                  </div>
+                </div>
+
+                {activity.description && (
+                  <p className="ust-timeline-description">
+                    {activity.description}
+                  </p>
+                )}
+
+                {activity.location_name && (
+                  <p className="ust-timeline-location">
+                    LOCATION: {activity.location_name}
+                  </p>
+                )}
+
+                <div className="ust-timeline-record-grid">
+                  <div>
+                    <span>START · UTC</span>
+                    <strong>{formatUtc(activity.start_utc)}</strong>
+                  </div>
+
+                  {activity.end_utc && (
+                    <div>
+                      <span>END · UTC</span>
+                      <strong>{formatUtc(activity.end_utc)}</strong>
+                    </div>
+                  )}
+
+                  <div>
+                    <span>START · UST</span>
+                    <strong>
+                      Cycle {activity.start_ust.cycle_number} · Phase{' '}
+                      {activity.start_ust.phase_number}/
+                      {activity.start_ust.phases_per_cycle}
+                    </strong>
+                    <small>
+                      {activity.start_ust.phase_progress_percent.toFixed(2)}%
+                      phase progress
+                    </small>
+                  </div>
+
+                  {activity.end_ust && (
+                    <div>
+                      <span>END · UST</span>
+                      <strong>
+                        Cycle {activity.end_ust.cycle_number} · Phase{' '}
+                        {activity.end_ust.phase_number}/
+                        {activity.end_ust.phases_per_cycle}
+                      </strong>
+                      <small>
+                        {activity.end_ust.phase_progress_percent.toFixed(2)}%
+                        phase progress
+                      </small>
+                    </div>
+                  )}
+                </div>
+
+                {boundaries > 0 && (
+                  <p className="ust-timeline-boundary">
+                    Spans {boundaries} UST phase boundary
+                    {boundaries === 1 ? '' : 'ies'}.
+                  </p>
+                )}
+
+                <p className="ust-timeline-version">
+                  Calendar {activity.start_ust.calendar_version}
+                  {' · '}
+                  Epoch {activity.start_ust.epoch_utc}
+                </p>
+              </article>
+            );
+          })}
+        </div>
+      )}
+
+      {activities.length > 5 && (
+        <div className="ust-timeline-pagination">
+          <span>PAGE {safeActivityPage} / {activityPageCount} · {activities.length} ACTIVITIES</span>
+          <div>
+            <button type="button" disabled={safeActivityPage <= 1}
+              onClick={() => setActivityPage(safeActivityPage - 1)}>
+              PREVIOUS
+            </button>
+            <button type="button" disabled={safeActivityPage >= activityPageCount}
+              onClick={() => setActivityPage(safeActivityPage + 1)}>
+              NEXT
+            </button>
+          </div>
+        </div>
+      )}
+      <p className="technical-note ust-timeline-storage-note">
+        Records are stored locally in this browser on this computer.
+        CSV export is available for backup or transfer. Browser storage
+        is not cloud backup and may be cleared independently.
+      </p>
+    {calendarHost ? createPortal(
+      <section className="panel ust-master-calendar-panel">
+      <div className="ust-calendar-toolbar">
+        <div>
+          <strong>CALENDAR VIEWS</strong>
+          <span>{activities.length} recorded activities</span>
+        </div>
+
+        <div className="ust-calendar-tabs" role="group" aria-label="Calendar view">
+          <button
+            type="button"
+            className={activeView === 'mission' ? 'active' : ''}
+            aria-pressed={activeView === 'mission'}
+            onClick={() => setActiveView('mission')}
+          >
+            MISSION
+          </button>
+          <button
+            type="button"
+            className={activeView === 'cosmic' ? 'active' : ''}
+            aria-pressed={activeView === 'cosmic'}
+            onClick={() => setActiveView('cosmic')}
+          >
+            COSMIC
+          </button>
+          <button
+            type="button"
+            className={activeView === 'combined' ? 'active' : ''}
+            aria-pressed={activeView === 'combined'}
+            onClick={() => setActiveView('combined')}
+          >
+            UTC / UST
+          </button>
+        </div>
+      </div>
+
+      {!hasActivities ? (
+        <div className="ust-timeline-empty">
+          No activities recorded. Add a milestone or a duration activity above.
+        </div>
+      ) : (
+        <>
+          {activeView === 'mission' && (
+            <div className="ust-visual-panel">
+              <div className="ust-visual-title">
+                <strong>MISSION TIMELINE</strong>
+                <span>POSITIONED BY UTC</span>
+              </div>
+
+              <div className="ust-axis-labels">
+                {utcTicks.map((tick, index) => (
+                  <span key={index}>{formatAxisDate(tick)}</span>
+                ))}
+              </div>
+
+              <div className="ust-timeline-visual-list">
+                {sortedActivities.map((activity) => {
+                  const start = utcPercent(activity.start_utc);
+                  const end = activity.end_utc
+                    ? utcPercent(activity.end_utc)
+                    : start;
+
+                  return (
+                    <div className="ust-visual-row" key={activity.id}>
+                      <div className="ust-visual-row-label">
+                        <strong>{activity.name}</strong>
+                        <small>
+                          {activity.end_utc ? 'DURATION' : 'MILESTONE'}
+                          {' · '}
+                          {formatUtc(activity.start_utc)}
+                        </small>
+                      </div>
+
+                      <div className="ust-visual-track">
+                        <div className="ust-track-line" />
+                        {activity.end_utc ? (
+                          <div
+                            className="ust-duration-bar"
+                            style={{
+                              left: `${start}%`,
+                              width: `${Math.max(end - start, 0.7)}%`,
+                            }}
+                            title={`${formatUtc(activity.start_utc)} — ${formatUtc(activity.end_utc)}`}
+                          />
+                        ) : (
+                          <div
+                            className="ust-milestone-marker"
+                            style={{ left: `${start}%` }}
+                            title={formatUtc(activity.start_utc)}
+                          />
+                        )}
+                      </div>
+
+                      <div className="ust-visual-row-meta">
+                        Cycle {activity.start_ust.cycle_number} · Phase{' '}
+                        {activity.start_ust.phase_number}/
+                        {activity.start_ust.phases_per_cycle}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {activeView === 'cosmic' && (
+            <div className="ust-visual-panel ust-cosmic-view">
+              <div className="ust-visual-title">
+                <strong>COSMIC CALENDAR</strong>
+                <span>13 PHASES PER CYCLE</span>
+              </div>
+
+              <div className="ust-cosmic-layout">
+                <svg
+                  className="ust-phase-wheel"
+                  viewBox="0 0 220 220"
+                  role="img"
+                  aria-label="Circular 13-phase UST calendar"
+                >
+                  <circle
+                    cx="110"
+                    cy="110"
+                    r="86"
+                    className="ust-wheel-outline"
+                  />
+
+                  {Array.from({ length: 13 }, (_, index) => {
+                    const phase = index + 1;
+                    const active = occupiedPhases.has(phase);
+
+                    return (
+                      <path
+                        key={phase}
+                        d={phaseSectorPath(phase)}
+                        className={
+                          active
+                            ? 'ust-phase-sector occupied'
+                            : 'ust-phase-sector'
+                        }
+                      />
+                    );
+                  })}
+
+                  <circle
+                    cx="110"
+                    cy="110"
+                    r="42"
+                    className="ust-wheel-centre"
+                  />
+
+                  <text
+                    x="110"
+                    y="105"
+                    textAnchor="middle"
+                    className="ust-wheel-centre-title"
+                  >
+                    UST
+                  </text>
+                  <text
+                    x="110"
+                    y="122"
+                    textAnchor="middle"
+                    className="ust-wheel-centre-subtitle"
+                  >
+                    13 PHASES
+                  </text>
+
+                  {sortedActivities.map((activity) => {
+                    const position = activity.start_ust;
+                    const angle =
+                      -90 +
+                      (activityPhaseCoordinate(position) * 360) / 13;
+                    const point = polarPoint(110, 110, 61, angle);
+
+                    return (
+                      <circle
+                        key={activity.id}
+                        cx={point.x}
+                        cy={point.y}
+                        r="4"
+                        className="ust-wheel-activity-dot"
+                      >
+                        <title>
+                          {activity.name}: Phase {position.phase_number}
+                        </title>
+                      </circle>
+                    );
+                  })}
+                </svg>
+
+                <div className="ust-phase-legend">
+                  {Array.from({ length: 13 }, (_, index) => {
+                    const phase = index + 1;
+                    const phaseActivities = sortedActivities.filter(
+                      (activity) =>
+                        activity.start_ust.phase_number === phase ||
+                        activity.end_ust?.phase_number === phase
+                    );
+
+                    return (
+                      <div className="ust-phase-legend-row" key={phase}>
+                        <span
+                          className={
+                            occupiedPhases.has(phase)
+                              ? 'ust-phase-swatch occupied'
+                              : 'ust-phase-swatch'
+                          }
+                        />
+                        <strong>Phase {phase}</strong>
+                        <small>
+                          {phaseActivities.length
+                            ? `${phaseActivities.length} activity reference${phaseActivities.length === 1 ? '' : 's'}`
+                            : 'No recorded activity'}
+                        </small>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <p className="technical-note">
+                Highlighted phases indicate phases containing recorded
+                activity start or end positions. Activity markers use
+                positions returned by the existing UST service.
+              </p>
+            </div>
+          )}
+
+          {activeView === 'combined' && (
+            <div className="ust-visual-panel">
+              <div className="ust-visual-title">
+                <strong>UTC / UST COMPARISON</strong>
+                <span>ONE ACTIVITY · TWO TIME REFERENCES</span>
+              </div>
+
+              <div className="ust-dual-axis-heading">
+                <span>UTC REFERENCE AXIS</span>
+                <span>UST PHASE COORDINATE</span>
+              </div>
+
+              <div className="ust-dual-list">
+                {sortedActivities.map((activity) => {
+                  const utcStart = utcPercent(activity.start_utc);
+                  const utcEnd = activity.end_utc
+                    ? utcPercent(activity.end_utc)
+                    : utcStart;
+                  const ustStart = ustPercent(activity.start_ust);
+                  const ustEnd = activity.end_ust
+                    ? ustPercent(activity.end_ust)
+                    : ustStart;
+
+                  return (
+                    <article className="ust-dual-row" key={activity.id}>
+                      <strong className="ust-dual-activity-name">
+                        {activity.name}
+                      </strong>
+
+                      <div className="ust-dual-axis-block">
+                        <span>UTC · {formatUtc(activity.start_utc)}</span>
+                        <div className="ust-visual-track">
+                          <div className="ust-track-line" />
+                          {activity.end_utc ? (
+                            <div
+                              className="ust-duration-bar"
+                              style={{
+                                left: `${utcStart}%`,
+                                width: `${Math.max(utcEnd - utcStart, 0.7)}%`,
+                              }}
+                            />
+                          ) : (
+                            <div
+                              className="ust-milestone-marker"
+                              style={{ left: `${utcStart}%` }}
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="ust-dual-axis-block">
+                        <span>
+                          UST · Cycle {activity.start_ust.cycle_number} ·
+                          Phase {activity.start_ust.phase_number}/
+                          {activity.start_ust.phases_per_cycle}
+                        </span>
+                        <div className="ust-visual-track ust-track-ust">
+                          <div className="ust-track-line" />
+                          {activity.end_ust ? (
+                            <div
+                              className="ust-duration-bar ust-duration-bar-ust"
+                              style={{
+                                left: `${ustStart}%`,
+                                width: `${Math.max(ustEnd - ustStart, 0.7)}%`,
+                              }}
+                            />
+                          ) : (
+                            <div
+                              className="ust-milestone-marker ust-milestone-marker-ust"
+                              style={{ left: `${ustStart}%` }}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+
+              <p className="technical-note">
+                The UTC and UST tracks are independently scaled display
+                axes. UST positions are taken from the service response;
+                this comparison does not perform a new time conversion.
+              </p>
+            </div>
+          )}
+        </>
+      )}
+      </section>,
+      calendarHost
+    ) : null}
+    </section>
+  );
+}
