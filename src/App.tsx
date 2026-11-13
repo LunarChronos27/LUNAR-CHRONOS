@@ -1,4 +1,4 @@
-﻿
+
 import { useEffect, useRef, useState } from 'react';
 import Map from 'ol/Map';
 import View from 'ol/View';
@@ -17,7 +17,7 @@ import MissionOperationsPlanner from './MissionOperationsPlanner';
 import SiteDateComparison from './SiteDateComparison';
 
 const WMS_URL = 'https://wms.im-ldi.com/';
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 type SolarResult = {
   solar_elevation_deg: number;
@@ -1327,7 +1327,7 @@ function App() {
                   <strong>Moon reference frame</strong>
 
                   <span>API ENDPOINT</span>
-                  <strong>127.0.0.1:8000</strong>
+                  <strong>{new URL(API_URL).host}</strong>
                 </div>
 
                 <p className="technical-note">
