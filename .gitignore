@@ -134,3 +134,46 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# LUNAR CHRONOS local backups and temporary files
+backups/
+backup*/
+**/backups/
+**/backup*/
+*_old_folder/
+**/*_old_folder/
+
+# Python generated files and environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local backup copies
+*.backup
+*.backup*
+*.bak
+
+# Local logs
+*.log
+
+# Additional repository exclusions
+backups/
+backup*/
+**/backups/
+**/backup*/
+*_old_folder/
+**/*_old_folder/
+
+# Backup copies
+*.backup
+*.backup*
+*.bak
+
+# Python generated files and environments
+__pycache__/
+*.py[cod]
+.venv/
+
+# Local logs
+*.log
