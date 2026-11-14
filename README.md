@@ -1,6 +1,8 @@
 # LUNAR-CHRONOS
+
 An independently developed lunar mission-planning prototype with a proposed 13-phase temporal framework.
-AI assistance and original authorship
+
+## AI assistance and original authorship
 
 LUNAR CHRONOS originated from an original concept developed by N. Sahra, including its proposed Cosmic Calendar and Universal Standard Time (UST) framework.
 
