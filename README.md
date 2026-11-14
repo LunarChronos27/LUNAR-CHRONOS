@@ -2,242 +2,192 @@
 
 ### An integrated lunar mission-planning prototype
 
-**By N. Sahra · NASA Space Apps Challenge 2026**
+**NASA Space Apps Challenge 2026**
+
+**Challenge:** Lunar Landing Site Navigator
+
+**Developed by:** N. Sahra
+
+*Explore the Moon. Plan with precision.*
 
 ![LUNAR CHRONOS application dashboard](lunar%20app%202.JPG)
 
-**Explore the Moon. Plan with precision.**
+## Project overview
 
-LUNAR CHRONOS is an independently developed lunar mission-planning prototype built around an original proposed temporal framework. Developed for the NASA Space Apps Challenge 2026, under the **Lunar Landing Site Navigator** challenge, it brings together lunar mapping, solar geometry, Earth visibility analysis, mission-planning tools, and the proposed Cosmic Calendar — Universal Standard Time (UST).
+LUNAR CHRONOS is an independently developed lunar mission-planning prototype with an original proposed temporal framework.
 
----
+Developed for the NASA Space Apps Challenge 2026, under the Lunar Landing Site Navigator challenge, it brings together interactive lunar mapping, SPICE-based astronomical calculations, solar elevation analysis, Earth visibility geometry and mission-planning capabilities within a single application.
 
-## 1. Project overview
+The prototype focuses on the lunar South Pole, where illumination conditions, visibility of Earth and the timing of surface activities are important considerations for future exploration.
 
-### 1.1 The concept
+Its distinguishing contribution is the integration of these capabilities with the **Cosmic Calendar — Universal Standard Time (UST)**, an original proposed 13-phase temporal framework designed to organise lunar mission timelines alongside local lunar environmental conditions.
 
-LUNAR CHRONOS explores how lunar location, observation time, solar geometry, Earth visibility, and mission activities can be considered together in one interactive environment.
+UST is a proposed concept, not an official lunar time standard. UTC remains the authoritative time reference in the application.
 
-The project originated from an original concept developed by N. Sahra. Its first practical implementation focuses on the lunar South Pole and selected surrounding reference locations.
+LUNAR CHRONOS is a research and development prototype. It is not a certified landing-site assessment tool, an operational lunar navigation service or a scientifically validated mission-operations platform.
 
-### 1.2 Project objective
+## Main capabilities
 
-The objective is to provide a preliminary environment for examining lunar locations and comparing how observation time and local environmental geometry may affect mission planning.
+### Interactive lunar mapping
 
-Rather than presenting individual scientific tools as new inventions, LUNAR CHRONOS brings complementary capabilities together and introduces an original proposed temporal framework.
+The application provides an interactive lunar map with a focus on the lunar South Pole and selected locations of interest, including Shackleton Crater and the de Gerlache vicinity.
 
-## 2. Main capabilities
+It uses Lunar Reconnaissance Orbiter Camera (LROC) Wide Angle Camera (WAC) and Narrow Angle Camera (NAC) imagery through the LROC mapping service.
 
-### 2.1 Interactive lunar mapping
+The displayed locations are reference points for exploration and comparison. They are not certified landing sites.
 
-An interactive lunar map provides geographical context for examining selected reference locations, including the lunar South Pole, Shackleton Crater, and the de Gerlache vicinity.
-
-The application uses Lunar Reconnaissance Orbiter Camera (LROC) Wide Angle Camera (WAC) and Narrow Angle Camera (NAC) imagery through the LROC mapping service.
-
-These locations are reference points for exploration and comparison. They are not certified landing sites.
-
-### 2.2 Solar elevation analysis
+### Solar elevation analysis
 
 SPICE-based calculations determine the geometric elevation of the Sun relative to the local lunar horizon for selected locations and observation times.
 
-This provides a preliminary indication of illumination geometry relevant to mission timing and future solar-energy assessment.
+These calculations provide a preliminary basis for examining local illumination conditions. They do not yet constitute a complete terrain-aware solar exposure or power-generation model.
 
-### 2.3 Earth visibility analysis
+### Earth visibility analysis
 
-The application calculates Earth-centre elevation, angular radius, and upper- and lower-limb geometry relative to the local lunar horizon.
+The application examines the geometric visibility of Earth from selected lunar locations. Its outputs include Earth-centre elevation, apparent angular radius, and upper- and lower-limb elevation.
 
-This provides a more detailed picture of geometric Earth visibility than a simple visible-or-not-visible indicator.
+A time-dependent visibility scan is also available, using hourly sampling over a 708-hour analysis window.
 
-### 2.4 Time-dependent visibility analysis
+Geometric visibility does not establish radio-link availability, communication quality or operational connectivity.
 
-An hourly sampled 708-hour Earth-visibility scan allows users to examine how geometric visibility changes over time and identify potential visibility windows for further investigation.
+### Mission planning
 
-### 2.5 Location and scenario comparison
+The prototype includes mission-planning functionality for organising activities and examining selected environmental conditions at relevant mission times.
 
-Mission-planning tools support the examination of different reference locations and observation scenarios. This helps users consider how location and timing affect lunar environmental geometry.
+The Mission Operations Planner supports comparison of solar elevation and geometric Earth visibility at the beginning and end of a selected activity for up to two reference locations.
 
-### 2.6 Mission planning and CLPS references
+This is a geometric snapshot comparison, not a complete assessment of mission feasibility, terrain obstruction, communications performance or energy requirements.
 
-The application includes mission timeline functions and a reference module covering selected Commercial Lunar Payload Services (CLPS) missions.
+### Cosmic Calendar — Universal Standard Time
 
-These records provide mission context. They are not intended to constitute a complete or official CLPS mission registry.
+The Cosmic Calendar introduces a proposed 13-phase temporal framework for organising lunar mission timelines.
 
-## 3. Scientific and technical foundation
+It is intended to provide an additional temporal reference alongside UTC, while keeping UTC as the authoritative time standard.
 
-### 3.1 Scientific data and reference resources
+The current implementation is provisional. It uses UTC-based date-time arithmetic and a custom epoch. It does not provide a complete UTC-to-lunar-local-time conversion, a leap-second model or an actual lunar phase prediction.
 
-LUNAR CHRONOS combines scientific resources and computational methods to examine lunar environmental geometry.
+### CLPS mission references
 
-The principal resources include:
+The application includes selected Commercial Lunar Payload Services (CLPS) mission references to provide context for lunar exploration activities.
 
-- JPL DE440 planetary ephemeris;
-- NASA/JPL SPICE toolkit;
-- SpiceyPy;
-- Lunar Reconnaissance Orbiter Camera (LROC) imagery;
-- USGS Gazetteer of Planetary Nomenclature;
-- NASA/JPL Horizons for preliminary independent calculation comparisons.
+These records are a curated selection, not an exhaustive or continuously updated mission registry.
 
-### 3.2 Computational approach
+## Scientific and technical architecture
 
-The application uses SPICE-based calculations and lunar reference-frame information to examine the changing geometry of the Sun and Earth relative to selected lunar locations.
+LUNAR CHRONOS combines a Python-based scientific calculation backend with a browser-based application interface.
 
-These calculations provide a scientific computational foundation for preliminary exploration. Their outputs remain subject to further independent testing and verification.
+**Scientific computation and data**
 
-### 3.3 Software architecture
+- NASA/JPL Development Ephemeris DE440.
+- NAIF SPICE toolkit and lunar orientation kernels.
+- SpiceyPy for Python access to SPICE functionality.
+- NASA/JPL Horizons for independent computational comparison.
 
-The application combines a Python backend using FastAPI and SpiceyPy with a frontend developed using React, TypeScript, and Vite.
+**Application architecture**
 
-OpenLayers provides the interactive mapping environment.
+- Python and FastAPI for the calculation backend.
+- React and TypeScript for the application interface.
+- Vite for development and production builds.
+- OpenLayers for interactive mapping.
+- LROC WAC and NAC imagery services for lunar visualisation.
 
-Together, these technologies bring scientific calculations, geographical visualization, and mission-planning functions into one prototype.
+The application uses SPICE-based calculations and lunar orientation information to support its geometric analyses. The numerical outputs remain subject to further independent testing and scientific verification.
 
-## 4. Cosmic Calendar — Universal Standard Time (UST)
+## Preliminary computational comparison
 
-### 4.1 The original timekeeping concept
-
-The Cosmic Calendar and its proposed Universal Standard Time framework originate from N. Sahra's original conceptual work on timekeeping.
-
-The idea was to explore whether an alternative temporal structure could help organize lunar mission activities alongside the changing environmental conditions at a particular lunar location.
-
-### 4.2 The proposed 13-phase framework
-
-For LUNAR CHRONOS, this concept has been translated into a proposed 13-phase temporal framework designed to provide a consistent reference for organising lunar mission timelines alongside local lunar environmental conditions.
-
-The framework represents an original conceptual dimension of the project and is intended to complement the application's mission-planning functions.
-
-### 4.3 Relationship with UTC
-
-UST is a provisional proposal developed for this project. It is not an officially recognized lunar time standard.
-
-UTC remains the authoritative time reference. The proposed UST framework is intended as a supplementary temporal layer, not a replacement for UTC.
-
-## 5. Preliminary independent calculation comparison
-
-### 5.1 Initial comparison
-
-An initial comparison was undertaken to examine whether selected LUNAR CHRONOS outputs were numerically consistent with independent NASA/JPL Horizons results.
+A preliminary comparison has been conducted between selected LUNAR CHRONOS outputs and NASA/JPL Horizons.
 
 The documented test was conducted on 8 November 2026 at 12:00 UTC, at the lunar South Pole reference location.
 
-| Parameter | LUNAR CHRONOS | Horizons |
+| Parameter | LUNAR CHRONOS | NASA/JPL Horizons |
 |---|---:|---:|
 | Solar elevation | +1.533300° | +1.533280° |
 | Earth-centre elevation | −6.456700° | −6.456684° |
 
-### 5.2 Interpretation and limitations
+These results provide an encouraging initial numerical comparison. However, the two calculations used different ephemerides and computational configurations.
 
-These results provide an encouraging initial numerical comparison. However, the calculations used different ephemerides and configurations.
+The comparison is therefore preliminary, not a strict like-for-like validation or proof of scientific accuracy.
 
-The comparison is therefore preliminary. It is not a comprehensive or strictly like-for-like scientific validation.
+Further testing, configuration harmonisation, documented tolerances and independent verification are required before scientific validation can be claimed.
 
-Further independent testing, harmonisation of calculation configurations, and a documented assessment of numerical tolerances are required before broader scientific conclusions can be drawn.
+## Current limitations
 
-## 6. Limitations and scientific integrity
+The current prototype has a defined scope and several areas requiring further development.
 
-### 6.1 Current scope
+- It does not provide certified landing-site safety assessments or complete terrain-hazard analysis.
+- Its solar calculations do not yet constitute a complete terrain-aware illumination or solar-power model.
+- Its Earth visibility calculations are geometric and do not establish communications availability.
+- It does not yet include a complete LOLA-based terrain analysis or terrain-aware Earth-visibility assessment.
+- The proposed UST framework is experimental and does not replace UTC.
+- Selected mission and location records require continued review and verification.
 
-LUNAR CHRONOS is a research and mission-planning prototype. It is not a certified operational mission system or a landing-site safety assessment.
+These limitations distinguish implemented functionality from future development objectives.
 
-The selected lunar locations are reference locations, not certified landing sites.
+## Future development
 
-### 6.2 Capabilities not yet implemented
+The next development stages are intended to strengthen the scientific basis and extend the planning capabilities of LUNAR CHRONOS.
 
-The current prototype does not provide:
+Priority areas include:
 
-- A complete LOLA-based terrain and hazard assessment;
-- Terrain-resolved 3D surface analysis;
-- A complete solar-power generation model;
-- A terrain-aware operational communications-link assessment;
-- A complete solar-elevation time curve over the 708-hour scan.
+1. **Scientific validation:** independent comparison of calculations, reproducible test cases, documented assumptions and quantitative error tolerances.
+2. **Lunar terrain analysis:** integration and evaluation of additional LRO datasets, including LOLA elevation data and further LROC imagery.
+3. **Environmental analysis:** investigation of thermal conditions, illumination, shadowing and relevant public lunar datasets.
+4. **Mission operations:** development of more comprehensive mission timelines and environmental planning tools.
+5. **Energy and infrastructure planning:** exploration of solar exposure, energy requirements and potential surface infrastructure applications.
+6. **Temporal framework research:** further examination of the proposed UST concept and its possible adaptation to other planetary environments.
 
-### 6.3 Interpretation of environmental results
+These are proposed development objectives. They should not be interpreted as capabilities already implemented or scientifically validated.
 
-Geometric Earth visibility does not establish the availability of an operational communications link.
+## Project demonstration
 
-Terrain obstruction, antenna characteristics, link budgets, and communications network availability require further modelling.
-
-The application's scientific outputs remain subject to further independent verification. These distinctions are important: preliminary calculations should not be mistaken for validated operational results.
-
-## 7. Future development
-
-### 7.1 Scientific validation
-
-Planned work includes:
-
-- Expanding independent comparisons against authoritative NASA/JPL data;
-- Harmonising calculation configurations and documenting assumptions;
-- Assessing numerical differences and tolerances;
-- Extending testing across additional dates, lunar locations, and observation conditions.
-
-### 7.2 Lunar terrain and 3D visualisation
-
-Future development may include:
-
-- Integrating verified lunar elevation and topographic datasets, including relevant LOLA data;
-- Developing interactive 3D lunar terrain visualisation;
-- Progressively introducing terrain-aware analysis, including slopes and horizon obstruction.
-
-### 7.3 Environmental and mission-operations analysis
-
-Planned improvements include:
-
-- Adding solar-elevation curves alongside Earth-visibility analysis;
-- Improving the identification and timing of solar and Earth horizon crossings;
-- Developing more complete illumination and solar-energy assessment;
-- Progressing towards terrain-aware communications analysis, including future consideration of antenna characteristics and link budgets.
-
-### 7.4 Mission planning and temporal development
-
-Further development may include:
-
-- Expanding the range of lunar reference locations using verified coordinates;
-- Improving scenario comparison and mission-timeline organisation;
-- Further developing the proposed UST framework as a supplementary temporal layer while retaining UTC as the authoritative reference.
-
-### 7.5 Progressive development approach
-
-Future capabilities will depend on the availability, quality, resolution, and compatibility of authoritative scientific datasets.
-
-Each development stage will involve identifying technical gaps, integrating appropriate data, testing calculations and visualisations, and documenting remaining uncertainties.
-
-This roadmap describes future development objectives, not functionality claimed as already implemented.
-
-## 8. NASA project demonstration
-
-### 8.1 Project presentation
-
-The seven-slide project presentation is available in this repository:
+The seven-slide NASA Space Apps Challenge project presentation is available here:
 
 [View the LUNAR CHRONOS NASA 2026 project demonstration (PDF)](LUNAR_CHRONOS_NASA_2026_Project_Demo_FINAL_v3.pdf)
 
-## 9. Application access
+## Full technical documentation
 
-### 9.1 Source code and documentation
+The complete project documentation provides further details on the original concept, application capabilities, scientific and technical architecture, proposed UST framework, preliminary computational comparison, current limitations and future development roadmap.
 
-The application is currently available as a locally runnable prototype rather than a publicly hosted web application.
+[Read the complete LUNAR CHRONOS project documentation](docs/PROJECT_DOCUMENTATION.md)
 
-This public GitHub repository provides access to the project's source code and supporting documentation.
+## Running the application
 
-## 10. AI assistance and original authorship
+LUNAR CHRONOS is a locally runnable prototype rather than a hosted web application.
 
-### 10.1 Original concept and project direction
+The repository contains the application source code, backend components and supporting files. Running the complete application requires the appropriate local development environment and dependencies.
 
-LUNAR CHRONOS originated from an original concept developed by N. Sahra, including its proposed Cosmic Calendar and Universal Standard Time (UST) framework.
+The `README.txt` file provides separate instructions for the Mission Operations Planner installation package. Those instructions apply to that component and are not a complete installation guide for the entire application.
 
-### 10.2 Use of AI-assisted tools
+## Scientific data and references
 
-ChatGPT (OpenAI) was used during development to assist with research, technical explanations, coding, debugging, data interpretation, and documentation. AI-assisted suggestions and code were reviewed, adapted, and evaluated by the project creator.
+The project draws on publicly available scientific resources and software documentation, including:
 
-These tools helped translate the original concept into a practical application. They did not originate the project's central concept or replace the creator's decisions concerning its purpose, structure, proposed temporal framework, development priorities, and final presentation.
+- [NASA/JPL Solar System Dynamics — Planetary and Lunar Ephemerides](https://ssd.jpl.nasa.gov/planets/eph_export.html)
+- [NASA NAIF — SPICE Toolkit](https://naif.jpl.nasa.gov/)
+- [NASA/JPL Horizons](https://ssd.jpl.nasa.gov/horizons/)
+- [Lunar Reconnaissance Orbiter Camera — LROC](https://data.lroc.im-ldi.com/lroc/)
+- [USGS Gazetteer of Planetary Nomenclature](https://planetarynames.wr.usgs.gov/)
+- [Lunaserv](https://lunaserv.im-ldi.com/about.html)
+- [SpiceyPy documentation](https://spiceypy.readthedocs.io/)
+- [OpenLayers documentation](https://openlayers.org/)
+- [React documentation](https://react.dev/)
+- [TypeScript documentation](https://www.typescriptlang.org/)
+- [FastAPI documentation](https://fastapi.tiangolo.com/)
+- [Vite documentation](https://vite.dev/)
 
-### 10.3 Responsibility and scientific verification
+## AI-assisted development and original authorship
 
-The project's central concept, design direction, proposed temporal framework, and principal development decisions remain the creator's own.
+The original LUNAR CHRONOS concept and the proposed Cosmic Calendar temporal framework were developed by N. Sahra.
 
-The project creator remained responsible for directing the development process, reviewing and adapting technical suggestions, and assessing the results.
+ChatGPT (OpenAI) was used during development to assist with research, technical explanations, coding, debugging, data interpretation and documentation. AI-assisted suggestions and code were reviewed, adapted and evaluated by the project creator.
 
-AI assistance does not constitute independent scientific validation of the application's calculations or results.
+AI assistance does not constitute independent scientific validation. Responsibility for the project concept, development decisions, interpretation and submitted work remains with the developer.
 
 ---
 
-**Explore the Moon. Plan with precision.**
+**LUNAR CHRONOS**
+
+*Explore the Moon. Plan with precision.*
+
+Developed by N. Sahra  
+NASA Space Apps Challenge 2026
