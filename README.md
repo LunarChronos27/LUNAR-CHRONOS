@@ -10,6 +10,8 @@
 
 *Explore the Moon. Plan with precision.*
 
+[**Open the LUNAR CHRONOS application →**](https://lunar-chronos-app.onrender.com)
+
 ![LUNAR CHRONOS application dashboard](lunar%20app%202.JPG)
 
 ## Project overview
