@@ -154,9 +154,11 @@ The complete project documentation provides further details on the original conc
 
 ## Running the application
 
-LUNAR CHRONOS is a locally runnable prototype rather than a hosted web application.
+LUNAR CHRONOS is deployed as a hosted web application on Render and can be accessed directly through a web browser.
 
-The repository contains the application source code, backend components and supporting files. Running the complete application requires the appropriate local development environment and dependencies.
+[Open the LUNAR CHRONOS application](https://lunar-chronos-app.onrender.com).
+
+The repository contains the application source code, backend components and supporting files. The application can also be run locally using the appropriate development environment and dependencies.
 
 The `README.txt` file provides separate instructions for the Mission Operations Planner installation package. Those instructions apply to that component and are not a complete installation guide for the entire application.
 
