@@ -146,11 +146,23 @@ The seven-slide NASA Space Apps Challenge project presentation is available here
 
 [View the LUNAR CHRONOS NASA 2026 project demonstration (PDF)](LUNAR_CHRONOS_NASA_2026_Project_Demo_FINAL_v3.pdf)
 
+
 ## Full technical documentation
 
-The complete project documentation provides further details on the original concept, application capabilities, scientific and technical architecture, proposed UST framework, preliminary computational comparison, current limitations and future development roadmap.
+The complete project documentation is available in the repository in both PDF and Markdown formats.
 
-[Read the complete LUNAR CHRONOS project documentation](docs/PROJECT_DOCUMENTATION.md)
+**Final consolidated project report**
+
+[Read the LUNAR CHRONOS consolidated project report — 15 November 2026 (PDF)](docs/LUNAR_CHRONOS_Consolidated_Project_Report_NASA_2026_Final_15_November_2026.pdf)
+
+**Technical project documentation**
+
+[Read the complete LUNAR CHRONOS project documentation (Markdown)](docs/PROJECT_DOCUMENTATION.md)
+
+**User guide**
+
+[Read the LUNAR CHRONOS user guide](docs/USER_GUIDE.md)
+
 
 ## Running the application
 
