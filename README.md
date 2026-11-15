@@ -146,23 +146,33 @@ The seven-slide NASA Space Apps Challenge project presentation is available here
 
 [View the LUNAR CHRONOS NASA 2026 project demonstration (PDF)](LUNAR_CHRONOS_NASA_2026_Project_Demo_FINAL_v3.pdf)
 
-
 ## Full technical documentation
 
-The complete project documentation is available in the repository in both PDF and Markdown formats.
+The complete LUNAR CHRONOS project documentation is available in the repository in PDF and Markdown formats.
 
 **Final consolidated project report**
 
-[Read the LUNAR CHRONOS consolidated project report — 15 November 2026 (PDF)](docs/LUNAR_CHRONOS_Consolidated_Project_Report_NASA_2026_Final_15_November_2026.pdf)
+[Read the LUNAR CHRONOS consolidated project report — 15 November 2026 (PDF)](https://github.com/LunarChronos27/LUNAR-CHRONOS/blob/main/docs/LUNAR_CHRONOS_Consolidated_Project_Report_NASA_2026_Final_15_November_2026.pdf)
 
 **Technical project documentation**
 
-[Read the complete LUNAR CHRONOS project documentation (Markdown)](docs/PROJECT_DOCUMENTATION.md)
+[Read the complete LUNAR CHRONOS project documentation (Markdown)](https://github.com/LunarChronos27/LUNAR-CHRONOS/blob/main/docs/PROJECT_DOCUMENTATION.md)
 
 **User guide**
 
-[Read the LUNAR CHRONOS user guide](docs/USER_GUIDE.md)
+[Read the LUNAR CHRONOS user guide](https://github.com/LunarChronos27/LUNAR-CHRONOS/blob/main/docs/USER_GUIDE.md)
 
+## Supplementary real-world case study
+
+**Chandrayaan-3 at Shiv Shakti Point — Real-world landing-site case study**
+
+This supplementary study examines the Chandrayaan-3 landing site in the lunar south polar region and explores how LUNAR CHRONOS concepts can be applied to a documented historical lunar landing. It considers the landing coordinates, solar illumination conditions, geometric Earth visibility and relevant operational considerations, drawing on published ISRO, NASA/JPL and scientific sources.
+
+The study also demonstrates how the proposed Cosmic Calendar and Universal Standard Time (UST) framework can be applied retrospectively to organise a mission timeline alongside conventional UTC timekeeping.
+
+It distinguishes documented mission facts from current prototype capabilities and proposed future development. It does not imply that Chandrayaan-3 used UST, that a completed quantitative comparison of alternative landing sites has been performed, or that LUNAR CHRONOS has received scientific certification or endorsement from NASA or ISRO.
+
+[Read the Chandrayaan-3 landing-site case study (PDF)](https://github.com/LunarChronos27/LUNAR-CHRONOS/blob/main/docs/case-studies/LUNAR_CHRONOS_Chandrayaan3_Integrated_Landing_Site_Case_Study_NASA_2026_Final_15_November_2026.pdf)
 
 ## Running the application
 
