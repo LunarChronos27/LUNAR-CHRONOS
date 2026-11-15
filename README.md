@@ -172,7 +172,7 @@ The study also demonstrates how the proposed Cosmic Calendar and Universal Stand
 
 It distinguishes documented mission facts from current prototype capabilities and proposed future development. It does not imply that Chandrayaan-3 used UST, that a completed quantitative comparison of alternative landing sites has been performed, or that LUNAR CHRONOS has received scientific certification or endorsement from NASA or ISRO.
 
-[Read the Chandrayaan-3 landing-site case study (PDF)](https://github.com/LunarChronos27/LUNAR-CHRONOS/blob/main/docs/case-studies/LUNAR_CHRONOS_Chandrayaan3_Integrated_Landing_Site_Case_Study_NASA_2026_Final_15_November_2026.pdf)
+[Read the Chandrayaan-3 landing-site case study (PDF)](https://github.com/LunarChronos27/LUNAR-CHRONOS/blob/main/docs/LUNAR_CHRONOS_Chandrayaan3_Integrated_Landing_Site_Case_Study_NASA_2026_Final_15_November_2026.pdf)
 
 ## Running the application
 
